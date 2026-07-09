@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const authRoutes = require('./routes/auth'); // ADD THIS LINE near the top
 const problemRoutes = require('./routes/problems');
@@ -32,7 +33,7 @@ wss.on('connection', (ws) => {
 
 // Setup MongoDB Connection
 // Note: Requires a local MongoDB instance running on default port.
-const MONGO_URI = 'mongodb+srv://harsh:Harsh%409140@cluster0.vdyvoi8.mongodb.net/my_project_db?appName=Cluster0';
+const MONGO_URI = process.env.MONGO_URI;
 mongoose.connect(MONGO_URI)
   .then(() => console.log('Connected to MongoDB successfully'))
   .catch(err => console.error('MongoDB connection error:', err));

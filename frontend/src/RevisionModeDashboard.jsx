@@ -14,19 +14,19 @@ const RevisionModeDashboard = ({ navigate }) => {
         return null;
       }
     }).filter(Boolean))].sort().reverse();
-    
+
     if (dates.length === 0) return 0;
-    
+
     let streak = 0;
     let currentDate = new Date();
     let currentStr = currentDate.toISOString().split('T')[0];
-    
+
     if (!dates.includes(currentStr)) {
       currentDate.setDate(currentDate.getDate() - 1);
       currentStr = currentDate.toISOString().split('T')[0];
       if (!dates.includes(currentStr)) return 0;
     }
-    
+
     while (dates.includes(currentStr)) {
       streak++;
       currentDate.setDate(currentDate.getDate() - 1);
@@ -42,10 +42,10 @@ const RevisionModeDashboard = ({ navigate }) => {
     try {
       const uName = localStorage.getItem('userName') || 'testUser';
       const res = await fetch(`http://localhost:5000/api/problems/${uName}`);
-      if(res.ok) {
+      if (res.ok) {
         const data = await res.json();
         setProblems(data);
-        
+
         // Smart Daily Challenge Logic
         if (data.length > 0) {
           const todayStr = new Date().toISOString().split('T')[0];
@@ -109,7 +109,7 @@ const RevisionModeDashboard = ({ navigate }) => {
           </div>
         </div>
       </header>
-      
+
       {/* SideNavBar */}
       <aside className="h-screen w-64 fixed left-0 top-0 z-40 bg-slate-50 dark:bg-slate-950 flex flex-col p-4 space-y-2 border-r border-slate-100 dark:border-slate-800">
         <div className="mb-8 pt-16 px-2">
@@ -259,7 +259,7 @@ const RevisionModeDashboard = ({ navigate }) => {
 
             {/* Sidebar (Right) */}
             <div className="lg:col-span-4 space-y-6">
-              
+
               {/* Daily Challenge Mini Card */}
               <div className="signature-gradient p-6 rounded-2xl shadow-xl shadow-primary/20 text-white relative overflow-hidden">
                 <div className="relative z-10">
