@@ -122,4 +122,4 @@ This runs:
 
 ## 👨‍💻 Authors & Credits
 
-**AlgoRevis** is developed by **Harsh and Arpita** ([@harsh13satyam](https://github.com/harsh13satyam)).
+**AlgoRevis** is developed by **Harsh and Prithvi Raj** ([@harsh13satyam](https://github.com/harsh13satyam)).
