@@ -1,86 +1,125 @@
-# 🚀 AlgoRevis
+# 🚀 AlgoRevis — The Disciplined Curator
 
-**AlgoRevis** is a comprehensive web application designed to help developers and students track, manage, and revise their algorithmic programming problems efficiently.
+**AlgoRevis** is an intelligent, full-stack Data Structures & Algorithms (DSA) revision and practice platform designed for disciplined software engineers. It bridges spaced-repetition revision, interactive code execution, and AI-powered variant generation to ensure you master and retain problem-solving patterns.
 
-## ✨ Features
-* 📁 **Folder Management:** Create and organize custom folders for different types of problems.
-* 🧠 **Daily Revision Challenges:** A dynamic system that gives you randomized daily challenges to ensure you never forget what you've learned.
-* 🔒 **Secure Authentication:** User signup and login system to keep your data private and secure.
+---
+
+## ✨ Key Features & Capabilities
+
+### 1. 🎲 Interactive Random Practice & Compiler Workspace
+- **Dual-Pane Practice Workspace:** View problem statements, constraints, and examples on one side while coding in an integrated editor on the other.
+- **Polyglot Code Sandbox:** Run and test code in both **JavaScript** and **Python** directly in the browser with execution timers and standard input/output capture.
+- **Automated Test Runner:** Validate solutions against public and edge test cases with real-time pass/fail feedback and diff diagnostics.
+- **Submission History:** Persistent logging of user attempts, statuses, runtimes, and completion timestamps.
+
+### 2. 🤖 Context-Aware AI Question Generation
+- **Semantic Category Detection:** Rather than relying on generic placeholders, the AI engine dynamically detects the problem archetype (Two Sum / Hash Maps, Sliding Window, Two Pointers, Binary Search, Dynamic Programming, Graphs, Stacks).
+- **Custom Problem Variants:** Generates complementary "Question B" variations with calibrated difficulty, structured constraints, test cases, and hidden benchmark reference implementations.
+- **Variant Rotation:** Intelligent avoidance of repeated AI challenges for the same topic.
+
+### 3. 🔗 Multi-URL Dual Platform Links
+- **Duplicate Name Tolerance:** Allows users to store problems sharing the same title (e.g., across different patterns or platforms) without database collision.
+- **Side-by-Side Links:** When multiple links exist for a problem (e.g., LeetCode, GeeksforGeeks, Codeforces), all links are displayed concurrently in the compiler toolbar and problem header.
+
+### 4. 📚 Curated Industry DSA Sheets (`DsaSheetsView`)
+- **Striver's A2Z DSA Sheet:** Comprehensive coverage from basic arrays through advanced graph theory and DP.
+- **CSES Problem Set:** Competitive programming classics (Sorting, Searching, Tree Algorithms, Dynamic Programming).
+- **Fraz's SDE Sheet:** Core interview questions frequently tested at top tech companies.
+- **Direct Library Integration:** One-click "+ Add to Revision" imports sheet problems directly into your personal revision folders, or opens them instantly in the compiler workspace.
+
+### 5. ⏱️ Timed DSA Mock Assessments (`MockTestsView`)
+- **Assessment Tracks:** FAANG Interview Sprint, Binary Search & Optimization, Advanced Data Structures, and Dynamic Programming Mastery.
+- **Active Countdown Timers:** Simulates real interview time constraints with live timer indicators and per-question score breakdown.
+- **Instant Workspace Launch:** Jump directly from the assessment into the code execution environment.
+
+### 6. 📊 Revision Mode & Pattern Topics Grouping
+- **Topics Breakdown:** Aggregates your entire problem collection by algorithmic pattern/folder with problem counts, completion status, and difficulty distribution.
+- **Search & Filter:** Instant keyword search across topics and difficulties (Easy, Medium, Hard).
+- **Direct Practice Actions:** Jump straight into pattern-focused revision with a single click.
+
+### 7. 📁 Folder & Problem Management
+- Organize problems by custom algorithmic patterns (e.g., *Sliding Window*, *Intervals*, *Monotonic Stack*).
+- Attach custom notes, difficulty tags, external problem links, and base64 problem screenshots.
+- Bulk folder rename and cascade deletion capabilities.
+
+### 8. 🔒 Secure Zero-Friction Authentication
+- **Secure Password Hashing:** Salted `bcryptjs` encryption (cost factor 10) on user credentials.
+- **Persistent Sessions:** JSON Web Tokens (JWT) stored in HTTP-only cookies with `/api/auth/me` silent session verification on reload.
+- **No-Friction Registration:** Clean, instantaneous signup requiring only Full Name, Email, and Password—no email/phone OTP blockers.
+- **Collision-Free Phone Indexing:** MongoDB `partialFilterExpression` ensures users who register without a phone number never trigger null duplicate key index collisions.
+
+### 9. ⏰ Automated Notification Scheduler
+- Background cron scheduler (`scheduler.js`) delivering daily revision challenge reminders.
+- Multi-channel notification pipeline supporting Resend Email API and Twilio SMS/WhatsApp notifications with mock fallbacks for local development.
+
+---
 
 ## 🛠️ Tech Stack
-* **Frontend:** React.js, Vite
-* **Backend:** Node.js, Express.js
-* **Database:** MongoDB
-* **Authentication:** JSON Web Tokens (JWT)
+
+| Domain | Technology | Description |
+|---|---|---|
+| **Frontend** | React 19, Vite 8 | Modern reactive client architecture with modular components |
+| **Styling** | TailwindCSS v4 | Material 3 tokenized design system and custom signature gradients |
+| **Backend** | Node.js, Express 5 | Asynchronous RESTful API backend with modular routing |
+| **Database** | MongoDB Atlas, Mongoose 9 | Document store with partial indexes and schema validation |
+| **Security** | JWT, bcryptjs, cookie-parser | Encrypted credentials and secure cookie-based session management |
+| **Sandbox Execution** | Node.js isolated sandbox | Sandboxed JavaScript and Python runtime code execution |
+| **External Services** | Resend API, Twilio API | Email dispatch and SMS/WhatsApp notifications |
 
 ---
 
-## 👶 Beginner Setup Guide
-*Are you a beginner or just trying to run this project on your laptop? Follow these simple steps!*
+## 🚀 Setup & Installation Guide
 
-### 🛑 Step 1: What you need to install first
-Before you do anything, you need to have a software called **Node.js** installed on your computer.
-1. Go to [nodejs.org](https://nodejs.org/).
-2. Download and install the version that says "LTS" (Recommended for most users).
-3. Just keep clicking "Next" during the installation until it's finished.
+### Prerequisites
+- [Node.js](https://nodejs.org/) (v18+ LTS recommended)
+- MongoDB Atlas cluster or local MongoDB instance
 
-### 🔑 Step 2: Set up the secret passwords (.env file)
-The backend needs some passwords to connect to the database. These are hidden for security reasons, so you have to create a file for them.
+### 1. Environment Configuration
+Create a `.env` file inside the `backend` folder:
 
-1. Open the `backend` folder.
-2. Create a brand new text file and name it exactly: `.env` 
-   *(Make sure it doesn't accidentally save as `.env.txt`!)*
-3. Open this `.env` file in Notepad (or any text editor) and paste the following exactly as it is:
-
-```text
+```env
 PORT=5000
-MONGO_URI=mongodb+srv://harsh:harsh123@cluster0.vdyvoi8.mongodb.net/my_project_db?appName=Cluster0
-JWT_SECRET=add_your_secret_key_here
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_super_secure_jwt_secret_key
+# Optional Notification Keys:
+RESEND_API_KEY=your_resend_key
+TWILIO_ACCOUNT_SID=your_twilio_sid
+TWILIO_AUTH_TOKEN=your_twilio_token
 ```
-4. Save and close the `.env` file.
 
-### ⚙️ Step 3: Start the Backend (Server)
-Now we need to turn on the "engine" of the website.
+### 2. Backend Setup
+```bash
+cd backend
+npm install
+npm start
+```
+*The server will start on `http://localhost:5000` with MongoDB connected and background scheduler running.*
 
-1. Open your computer's Terminal (or Command Prompt).
-2. Navigate into the `backend` folder.
-   *(Tip: You can usually right-click inside the folder and select "Open in Terminal")*
-3. Type this command and press Enter:
-   ```bash
-   npm install
-   ```
-   *(Wait a minute for it to download all the necessary files. You will see a new folder called `node_modules` appear. This is completely normal!)*
-4. Once that finishes, type this command and press Enter to start the server:
-   ```bash
-   npm start
-   ```
-   *(If `npm start` gives an error, try `node server.js` instead).*
-5. **DO NOT CLOSE THIS TERMINAL WINDOW.** Leave it running in the background.
-
-### 🎨 Step 4: Start the Frontend (Website)
-Now we will turn on the visual part of the website!
-
-1. Open a **brand new** Terminal (or Command Prompt) window.
-2. Navigate into the `frontend` folder.
-3. Type this command and press Enter:
-   ```bash
-   npm install
-   ```
-   *(Wait for it to download files, just like before).*
-4. Once it finishes, type this command and press Enter:
-   ```bash
-   npm run dev
-   ```
-5. It will process for a few seconds, and then give you a local web link (usually something like `http://localhost:5173/`).
-6. Hold `Ctrl` on your keyboard and click that link, or copy and paste it into your web browser.
-
-🎉 **You are done! The website should now be loaded on your screen!** 🎉
+### 3. Frontend Setup
+In a new terminal window:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+*Vite will launch the client application at `http://localhost:5173`.*
 
 ---
 
-## 👨‍💻 Author / Credits
-**AlgoRevis** was proudly created and developed entirely by **Harsh and Arpita**
+## 🧪 Testing
 
-([@harsh13satyam](https://github.com/harsh13satyam)). 
+AlgoRevis includes comprehensive automated integration and HTTP route tests:
 
-*If you found this project helpful or use it yourself, feel free to give it a ⭐ on GitHub!*
+```bash
+cd backend
+npm test
+```
+This runs:
+- `tests/randomPracticeIntegrationTests.js`: Validates question selection, AI variant generation, sandbox code runner, test case verification, and attempt logging.
+- `tests/httpRouteTests.js`: Validates auth endpoints, problems CRUD, daily challenges, and external webhooks.
+
+---
+
+## 👨‍💻 Authors & Credits
+
+**AlgoRevis** is developed by **Harsh and Arpita** ([@harsh13satyam](https://github.com/harsh13satyam)).

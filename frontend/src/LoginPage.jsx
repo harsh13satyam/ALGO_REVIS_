@@ -1,27 +1,29 @@
 import React, { useState } from 'react';
 
+import api from './api';
+
 const LoginPage = ({ navigate, onLoginSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem('userName', data.name);
-        onLoginSuccess();
-      } else {
-        alert("Error: " + data.message);
+      const data = await api.login({ email, password });
+      const userObj = data.user || { name: data.name };
+      if (userObj.name) {
+        localStorage.setItem('userName', userObj.name);
+      }
+      if (onLoginSuccess) {
+        onLoginSuccess(userObj);
       }
     } catch (error) {
-      console.error("Failed", error);
-      alert("Network Error: Could not reach the server.");
+      console.error("Login failed:", error);
+      alert(error.message || "Network Error: Could not reach the server.");
+    } finally {
+      setLoading(false);
     }
   };
 

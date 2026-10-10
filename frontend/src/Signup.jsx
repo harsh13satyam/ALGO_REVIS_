@@ -1,146 +1,224 @@
 import React, { useState } from 'react';
+import api from './api';
 
-const Signup = ({ navigate }) => {
+const Signup = ({ navigate, onLoginSuccess }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
+    setErrorMsg('');
+
+    if (password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters long.');
+      return;
+    }
+
+    if (confirmPassword && password !== confirmPassword) {
+      setErrorMsg('Passwords do not match.');
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name, email: email, password: password })
+      const data = await api.signup({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        confirmPassword
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        alert("Account created! Please log in.");
-        navigate('login');
-      } else {
-        alert("Error: " + data.message);
+      const userObj = data.user || { name: data.name || name.trim(), email: email.trim() };
+      if (userObj.name) {
+        localStorage.setItem('userName', userObj.name);
       }
 
+      // Seamless direct login without any OTP friction
+      if (onLoginSuccess) {
+        onLoginSuccess(userObj);
+      } else {
+        navigate('login');
+      }
     } catch (error) {
-      console.error("Failed", error);
-      alert("Network Error: Could not reach the server.");
+      console.error('Signup error:', error);
+      setErrorMsg(error.message || 'Could not connect to the server. Please check your connection.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="bg-surface font-body text-on-background min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden text-left">
-      {/* Header / Brand Anchor */}
-      <header className="mb-12 text-center z-10">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <span className="material-symbols-outlined text-primary text-3xl" aria-hidden="true">history_edu</span>
-          <h1 className="font-headline font-extrabold text-2xl tracking-tight text-on-background">AlgoRevis</h1>
-        </div>
-        <p className="font-label text-on-surface-variant text-sm tracking-widest uppercase">The Disciplined Curator</p>
-      </header>
+    <div className="bg-background font-body text-on-surface min-h-screen flex flex-col relative overflow-hidden text-left">
+      {/* Aesthetic Background Accents */}
+      <div className="absolute -z-10 top-0 right-0 w-[40vw] h-[40vw] signature-gradient opacity-[0.04] rounded-full blur-[100px] translate-x-1/3 -translate-y-1/3 pointer-events-none"></div>
+      <div className="absolute -z-10 bottom-0 left-0 w-[30vw] h-[30vw] bg-tertiary opacity-[0.04] rounded-full blur-[80px] -translate-x-1/4 translate-y-1/4 pointer-events-none"></div>
 
-      {/* Main Signup Card */}
-      <main className="w-full max-w-md z-10">
-        <div className="bg-surface-container-lowest rounded-xl p-8 md:p-12 shadow-[0_32px_64px_-12px_rgba(25,28,29,0.06)] flex flex-col gap-8 transition-all duration-300">
-          <section className="space-y-2">
-            <h2 className="font-headline text-3xl font-bold text-on-background tracking-tight">Create your account</h2>
-            <p className="text-on-surface-variant font-body">Master algorithms with precision.</p>
-          </section>
-
-          <form className="flex flex-col gap-6" onSubmit={handleSignupSubmit}>
-            {/* Name Field */}
-            <div className="space-y-2">
-              <label className="font-label text-xs font-semibold uppercase tracking-wider text-on-surface-variant flex items-center gap-2" htmlFor="name">
-                Full Name
-              </label>
-              <div className="relative group">
-                <input 
-                  className="w-full bg-surface-container-high border-none rounded-lg px-4 py-3.5 focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all duration-200 outline-none placeholder:text-outline/50" 
-                  id="name" 
-                  placeholder="John Doe" 
-                  type="text" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
+      <main className="flex-grow flex items-center justify-center px-6 py-12">
+        <div className="w-full mx-auto max-w-[440px] z-10">
+          {/* Header / Brand Anchor */}
+          <header className="mb-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-500/10 mb-4 border border-indigo-500/20 shadow-sm">
+              <span className="material-symbols-outlined text-primary text-3xl">history_edu</span>
             </div>
+            <h1 className="font-headline font-extrabold text-3xl tracking-tight text-on-surface mb-1">AlgoRevis</h1>
+            <p className="font-label text-on-surface-variant text-xs tracking-widest uppercase">The Disciplined Curator</p>
+          </header>
 
-            {/* Email Field */}
-            <div className="space-y-2">
-              <label className="font-label text-xs font-semibold uppercase tracking-wider text-on-surface-variant flex items-center gap-2" htmlFor="email">
-                Email Address
-              </label>
-              <div className="relative group">
-                <input
-                  className="w-full bg-surface-container-high border-none rounded-lg px-4 py-3.5 focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all duration-200 outline-none placeholder:text-outline/50"
-                  id="email"
-                  placeholder="name@company.com"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+          {/* Main Signup Card */}
+          <div className="bg-surface-container-lowest rounded-[1.5rem] p-8 md:p-10 shadow-[0_32px_64px_-12px_rgba(25,28,29,0.06)] flex flex-col gap-6 border border-slate-100">
+            <section className="space-y-1">
+              <h2 className="font-headline text-2xl font-bold text-on-surface tracking-tight">Create your account</h2>
+              <p className="text-on-surface-variant text-sm font-body">Master algorithms with precision.</p>
+            </section>
 
+            {errorMsg && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-red-500">error</span>
+                <span>{errorMsg}</span>
               </div>
-            </div>
+            )}
 
-            {/* Password Field */}
-            <div className="space-y-2">
-              <label className="font-label text-xs font-semibold uppercase tracking-wider text-on-surface-variant flex items-center gap-2" htmlFor="password">
-                Password
-              </label>
-              <div className="relative group">
-                <input
-                  className="w-full bg-surface-container-high border-none rounded-lg px-4 py-3.5 focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all duration-200 outline-none placeholder:text-outline/50"
-                  id="password"
-                  placeholder="••••••••"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+            <form className="flex flex-col gap-5" onSubmit={handleSignupSubmit}>
+              {/* Full Name */}
+              <div className="space-y-1.5">
+                <label className="font-label text-xs font-semibold uppercase tracking-wider text-on-surface-variant ml-1" htmlFor="name">
+                  Full Name
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <span className="material-symbols-outlined text-lg">person</span>
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-4 py-3 bg-surface-container-high border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all duration-200 outline-none text-on-surface placeholder:text-slate-400"
+                    id="name"
+                    placeholder="Ada Lovelace"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
+
+              {/* Email Address */}
+              <div className="space-y-1.5">
+                <label className="font-label text-xs font-semibold uppercase tracking-wider text-on-surface-variant ml-1" htmlFor="email">
+                  Email Address
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <span className="material-symbols-outlined text-lg">mail</span>
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-4 py-3 bg-surface-container-high border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all duration-200 outline-none text-on-surface placeholder:text-slate-400"
+                    id="email"
+                    placeholder="ada@example.com"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <label className="font-label text-xs font-semibold uppercase tracking-wider text-on-surface-variant ml-1" htmlFor="password">
+                  Password
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <span className="material-symbols-outlined text-lg">lock</span>
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-4 py-3 bg-surface-container-high border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all duration-200 outline-none text-on-surface placeholder:text-slate-400"
+                    id="password"
+                    placeholder="••••••••"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Confirm Password */}
+              <div className="space-y-1.5">
+                <label className="font-label text-xs font-semibold uppercase tracking-wider text-on-surface-variant ml-1" htmlFor="confirm-password">
+                  Confirm Password
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <span className="material-symbols-outlined text-lg">lock_reset</span>
+                  </div>
+                  <input
+                    className="w-full pl-10 pr-4 py-3 bg-surface-container-high border-none rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-lowest transition-all duration-200 outline-none text-on-surface placeholder:text-slate-400"
+                    id="confirm-password"
+                    placeholder="••••••••"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Submit CTA */}
+              <button
+                className="w-full signature-gradient text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-indigo-500/20 hover:opacity-95 active:scale-[0.98] transition-all duration-200 mt-2 flex items-center justify-center gap-2 group disabled:opacity-50"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Creating Account...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Create Account</span>
+                    <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="pt-2 text-center border-t border-slate-100">
+              <p className="text-on-surface-variant text-sm">
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  className="text-primary font-bold hover:underline decoration-primary/30 underline-offset-4 ml-1"
+                  onClick={() => navigate('login')}
+                >
+                  Login
+                </button>
+              </p>
             </div>
-
-            {/* CTA Button */}
-            <button className="signature-gradient text-on-primary font-headline font-bold py-4 rounded-xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 mt-2" type="submit">
-              Create Account
-            </button>
-          </form>
-
-          <div className="flex flex-col items-center gap-4 pt-4">
-            <p className="text-on-surface-variant font-body text-sm">
-              Already have an account?{' '}
-              <button type="button" className="text-primary font-semibold hover:underline decoration-primary/30 underline-offset-4" onClick={() => navigate('login')}>Login</button>
-            </p>
           </div>
-        </div>
 
-        {/* Progress Ribbon / Tonal Detail */}
-        <div className="mt-8 flex justify-center gap-8 px-4 opacity-50">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-xs text-tertiary" aria-hidden="true">verified_user</span>
-            <span className="font-label text-[10px] uppercase tracking-tighter">Academic Precision</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-xs text-tertiary" aria-hidden="true">encrypted</span>
-            <span className="font-label text-[10px] uppercase tracking-tighter">Zero Friction UI</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-xs text-tertiary" aria-hidden="true">auto_awesome</span>
-            <span className="font-label text-[10px] uppercase tracking-tighter">Editorial Focus</span>
+          {/* Aesthetic Badges */}
+          <div className="mt-8 flex justify-center gap-6 px-4 opacity-50">
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-xs text-indigo-500">verified_user</span>
+              <span className="font-label text-[10px] uppercase tracking-wider text-slate-500">Academic Precision</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-xs text-indigo-500">encrypted</span>
+              <span className="font-label text-[10px] uppercase tracking-wider text-slate-500">Zero Friction</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-xs text-indigo-500">auto_awesome</span>
+              <span className="font-label text-[10px] uppercase tracking-wider text-slate-500">Editorial Focus</span>
+            </div>
           </div>
         </div>
       </main>
-
-      {/* Visual Anchor / Background Detail */}
-      <div className="fixed bottom-0 left-0 w-full h-1 signature-gradient opacity-40 z-0"></div>
-
-      {/* Aesthetic Texture Blobs */}
-      <div className="fixed -top-24 -left-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none z-0"></div>
-      <div className="fixed -bottom-24 -right-24 w-96 h-96 bg-tertiary/5 rounded-full blur-3xl pointer-events-none z-0"></div>
     </div>
   );
 };

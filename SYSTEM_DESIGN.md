@@ -1,6 +1,6 @@
-# AlgoRevis — System Design & Implementation Document
+# AlgoRevis — System Design & Architecture Document
 
-> **A personal DSA (Data Structures & Algorithms) revision tracker** built for disciplined engineers who want to track, organise, and intelligently revise their problem-solving history.
+> **The Disciplined Curator for Data Structures & Algorithms** — An intelligent revision, spaced-repetition, and interactive practice platform designed for software engineers.
 
 ---
 
@@ -11,87 +11,101 @@
 3. [Tech Stack](#3-tech-stack)
 4. [Repository Structure](#4-repository-structure)
 5. [Backend Design](#5-backend-design)
-   - [Server Setup](#51-server-setup)
+   - [Server Setup & Middleware](#51-server-setup--middleware)
    - [Database Models](#52-database-models)
-   - [API Routes](#53-api-routes)
+   - [API Route Specifications](#53-api-route-specifications)
+   - [Services & Background Workers](#54-services--background-workers)
 6. [Frontend Design](#6-frontend-design)
-   - [App Architecture & Navigation](#61-app-architecture--navigation)
-   - [Component Breakdown](#62-component-breakdown)
+   - [View Navigation & Deep Linking](#61-view-navigation--deep-linking)
+   - [Component Architecture](#62-component-architecture)
 7. [Core Feature Implementations](#7-core-feature-implementations)
-   - [Authentication Flow](#71-authentication-flow)
-   - [Problem Management (CRUD)](#72-problem-management-crud)
-   - [Folder Management](#73-folder-management)
-   - [Daily Challenge System](#74-daily-challenge-system)
-   - [Streak Calculation](#75-streak-calculation)
-8. [Data Flow Diagrams](#8-data-flow-diagrams)
-9. [System Flowcharts](#9-system-flowcharts)
-   - [Overall System Architecture](#91-overall-system-architecture)
-   - [Authentication Flow](#92-authentication-flow)
-   - [App Navigation & Routing](#93-app-navigation--routing)
-   - [Add Problem Flow](#94-add-problem-flow)
-   - [Daily Challenge Algorithm](#95-daily-challenge-algorithm)
-   - [Folder Management Operations](#96-folder-management-operations)
-10. [State Management](#10-state-management)
-11. [Known Limitations & Future Work](#11-known-limitations--future-work)
+   - [Authentication & Session Flow](#71-authentication--session-flow)
+   - [Interactive Practice & Split-Screen Compiler](#72-interactive-practice--split-screen-compiler)
+   - [Semantic AI Question Generation](#73-semantic-ai-question-generation)
+   - [Multi-Platform Dual Link Aggregation](#74-multi-platform-dual-link-aggregation)
+   - [Industry DSA Sheets Engine](#75-industry-dsa-sheets-engine)
+   - [Timed DSA Mock Assessments](#76-timed-dsa-mock-assessments)
+   - [Topics-Based Revision Mode](#77-topics-based-revision-mode)
+   - [Notification & Delivery Scheduler](#78-notification--delivery-scheduler)
+8. [Data Flow & System Diagrams](#8-data-flow--system-diagrams)
+9. [Resolved Architecture Milestones & Future Roadmap](#9-resolved-architecture-milestones--future-roadmap)
 
 ---
 
 ## 1. Project Overview
 
-**AlgoRevis** ("Algo Revision") is a full-stack web application designed to help developers track their LeetCode/DSA practice sessions. Users can:
+**AlgoRevis** is an end-to-end DSA revision system that transforms passive problem saving into an active, retention-driven practice routine.
 
-- **Create an account** and log in securely.
-- **Add problems** they have solved — with name, LeetCode link, difficulty, pattern/folder, notes, and an optional screenshot.
-- **Organise problems into folders** (pattern-based, e.g., "Sliding Window", "Dynamic Programming").
-- **Rename or delete** entire folders, which bulk-updates or bulk-deletes all problems in that folder.
-- **View a Dashboard** with performance statistics, streak, and recent activity.
-- **Use Revision Mode** — a dedicated view of the full revision queue with a "Daily Challenge" system that selects a randomly picked problem each day, avoiding repetition.
+The platform provides:
+- **Curated Problem Organization:** Group problems by pattern (e.g. *Sliding Window*, *Intervals*, *Dynamic Programming*).
+- **Daily Challenge & Random Practice:** Dual-question workspace combining a user/curated problem (Question A) with a complementary AI-generated variant (Question B).
+- **In-Browser Polyglot Compiler:** Run and validate JavaScript and Python solutions against automated test cases with execution telemetry.
+- **Industry Standard DSA Sheets:** Integrated problem catalogs from **Striver's A2Z Sheet**, **CSES Problem Set**, and **Fraz's SDE Sheet** with direct one-click library imports.
+- **Timed Mock Tests:** Real-time interview simulation environments with countdown timers and automated grading.
+- **Multi-URL Problem Support:** Seamlessly allows saving duplicate problem names across platforms (e.g., LeetCode and GeeksforGeeks), displaying both links side-by-side in the compiler workspace.
+- **Automated External Reminders:** Background cron scheduler sending daily revision tasks via email and WhatsApp.
 
 ---
 
 ## 2. High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          CLIENT (Browser)                           │
-│                                                                     │
-│   React 19 + Vite + TailwindCSS v4                                  │
-│                                                                     │
-│   LoginPage → DashboardHome → MyFolders → AddNewProblemForm         │
-│             ↘ RevisionModeDashboard → IndividualProblemReview       │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │  HTTP REST (fetch)
-                               │  Port 5000
-┌──────────────────────────────▼──────────────────────────────────────┐
-│                     SERVER (Node.js + Express 5)                    │
-│                                                                     │
-│   /api/auth   →  auth.js (signup / login)                           │
-│   /api/problems → problems.js (CRUD for problems & folders)         │
-│                                                                     │
-│   WebSocket Server (ws) — scaffolded, not yet consumed by frontend  │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │  Mongoose ODM
-┌──────────────────────────────▼──────────────────────────────────────┐
-│                  MongoDB Atlas (Cloud Database)                     │
-│                                                                     │
-│   Collections:  users  |  problems                                  │
-└─────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                           CLIENT LAYER (Browser)                       │
+│                                                                        │
+│   React 19 + Vite 8 + TailwindCSS v4                                   │
+│   Views: Login │ Signup │ DashboardHome │ MyFolders                    │
+│          AddNewProblemForm │ RevisionModeDashboard (Topics)             │
+│          DailyChallengeView (Split Compiler) │ DsaSheetsView           │
+│          MockTestsView                                                 │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ HTTP REST + Cookies (credentials: include)
+                                    │ Port 5000
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                         API & RUNTIME SERVER (Node.js)                 │
+│                                                                        │
+│   Express 5 REST APIs:                                                 │
+│     ├── /api/auth       (bcrypt, JWT cookies, instant signup)          │
+│     ├── /api/problems   (CRUD, folder batch operations)                │
+│     ├── /api/challenges (daily queues, random picks, similar AI gen)   │
+│     ├── /api/compiler   (sandboxed code execution: JS & Python)        │
+│     └── /api/webhooks   (WhatsApp interactive responses)               │
+│                                                                        │
+│   Engines & Background Workers:                                        │
+│     ├── aiService.js         (semantic category pattern detector)      │
+│     ├── compilerService.js   (isolated test runner & stdout capture)   │
+│     └── scheduler.js         (cron-based multi-channel reminder task)  │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Mongoose 9 ODM
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                       MONGODB ATLAS (Cloud Cluster)                    │
+│                                                                        │
+│   Collections:                                                         │
+│     ├── users                (with partial unique index on phone)      │
+│     ├── problems             (user-saved problem bank)                 │
+│     ├── dailychallenges      (daily queue state & multi-links)         │
+│     ├── aigeneratedquestions (cached semantic variants & test cases)   │
+│     ├── practiceattempts     (compiler execution and submission logs)  │
+│     └── pendingregistrations (session verification staging)            │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## 3. Tech Stack
 
-| Layer | Technology | Version | Notes |
+| Component | Technology | Version | Purpose |
 |---|---|---|---|
-| **Frontend framework** | React | 19.2.x | Uses functional components & hooks only |
-| **Build tool** | Vite | 8.x | Dev server + production bundler |
-| **Styling** | TailwindCSS | v4.2.x | Utility-first CSS; Material 3 token naming convention |
-| **Backend runtime** | Node.js | LTS | CommonJS (`"type": "commonjs"`) |
-| **Backend framework** | Express | 5.2.x | Async error propagation built-in |
-| **Database** | MongoDB (Atlas) | Cloud | Mongoose ODM v9.x |
-| **Real-time layer** | ws (WebSocket) | 8.x | Server-side scaffolded; unused by frontend currently |
-| **Auth security (dep)** | bcryptjs, jsonwebtoken | Installed | Not yet wired in — passwords stored plain text |
+| **Frontend Framework** | React | 19.2.x | Modular SPA interface using functional components and custom hooks |
+| **Client Bundler** | Vite | 8.x | Lightning-fast development server and optimized production packaging |
+| **Styling** | TailwindCSS | v4.2.x | Tokenized Material 3 visual styling, signature gradients, and dark/light accents |
+| **Backend Framework** | Express | 5.2.x | Asynchronous route handling and REST API middleware |
+| **Database** | MongoDB Atlas / Mongoose | 9.x | Cloud document store with schema validation and partial indexing |
+| **Authentication** | JWT + bcryptjs | 2.4.x | Salted password hashing (cost 10) and HTTP-only cookie session management |
+| **Code Sandbox** | Node.js VM / Python CLI | Native | Isolated execution sandbox for user code and automated unit tests |
+| **Email Service** | Resend API | 4.x | Transactional email delivery for daily revision problems |
+| **Messaging Service** | Twilio API | 5.x | SMS and WhatsApp delivery for daily challenges |
+| **Background Cron** | Node-cron / Timers | Native | Automated 60-second polling scheduler for scheduled notifications |
 
 ---
 
@@ -101,567 +115,272 @@
 algo_revis/
 ├── backend/
 │   ├── models/
-│   │   ├── User.js          # Mongoose User schema
-│   │   └── Problem.js       # Mongoose Problem schema
+│   │   ├── User.js                 # Schema with bcrypt hashing & partial phone index
+│   │   ├── Problem.js              # Problem model with URL-specific duplicate prevention
+│   │   ├── DailyChallenge.js       # Daily practice session model with allLinks array
+│   │   ├── AIGeneratedQuestion.js  # Generated variants with test cases & solutions
+│   │   ├── PracticeAttempt.js      # Compiler submission & telemetry history
+│   │   └── PendingRegistration.js  # Staging model for secure sessions
 │   ├── routes/
-│   │   ├── auth.js          # POST /signup, POST /login
-│   │   └── problems.js      # CRUD for problems & folder operations
-│   ├── server.js            # Express app entry point + WebSocket server
-│   ├── package.json
-│   └── .gitignore
+│   │   ├── auth.js                 # Instant signup, login, session check, logout
+│   │   ├── problems.js             # Problem CRUD, folder rename/delete
+│   │   ├── challenges.js           # Random practice queue, AI question generation
+│   │   ├── compiler.js             # Code execution & test case validation endpoint
+│   │   └── webhooks.js             # WhatsApp inbound message webhooks
+│   ├── services/
+│   │   ├── aiService.js            # Semantic problem classifier & variant generator
+│   │   ├── compilerService.js      # Isolated JS & Python test runner
+│   │   ├── verificationService.js  # Multi-channel notification & OTP handlers
+│   │   └── scheduler.js            # Automated cron scheduler
+│   ├── middleware/
+│   │   ├── auth.js                 # requireAuth, optionalAuth, JWT cookie helpers
+│   │   └── rateLimiter.js          # In-memory IP/session rate limiter
+│   ├── tests/
+│   │   ├── randomPracticeIntegrationTests.js # E2E practice & compiler test suite
+│   │   └── httpRouteTests.js       # Complete REST API route test suite
+│   ├── server.js                   # Application bootstrap & MongoDB connection
+│   └── package.json
 │
 └── frontend/
     ├── src/
-    │   ├── App.jsx                     # Root component + view router
-    │   ├── main.jsx                    # React DOM entry point
-    │   ├── index.css                   # Global styles + Tailwind directives
-    │   ├── App.css                     # App-level styles
-    │   ├── LoginPage.jsx               # Auth: login form
-    │   ├── Signup.jsx                  # Auth: registration form
-    │   ├── DashboardHome.jsx           # Main dashboard view
-    │   ├── MyFolders.jsx               # Folder grid + problem cards view
-    │   ├── AddNewProblemForm.jsx       # Modal form to add a new problem
-    │   ├── RevisionModeDashboard.jsx   # Revision queue view + daily challenge
-    │   └── IndividualProblemReview.jsx # (Scaffolded) Single problem review
-    ├── index.html
-    ├── vite.config.js
-    ├── package.json
-    └── .gitignore
+    │   ├── api.js                  # Centralized client API wrapper with cookie credentials
+    │   ├── App.jsx                 # View state router & session rehydration on mount
+    │   ├── LoginPage.jsx           # Clean authentication sign-in form
+    │   ├── Signup.jsx              # Zero-friction 3-field registration form
+    │   ├── DashboardHome.jsx       # Analytics, streak indicator, recent folders
+    │   ├── MyFolders.jsx           # Folders grid, problem review, daily challenge trigger
+    │   ├── AddNewProblemForm.jsx   # Problem creation form with screenshot upload
+    │   ├── RevisionModeDashboard.jsx # Revision queue & Topics pattern breakdown
+    │   ├── DailyChallengeView.jsx  # Split-screen compiler & dual-question workspace
+    │   ├── DsaSheetsView.jsx       # Striver, CSES, and Fraz DSA sheets view
+    │   ├── MockTestsView.jsx       # Timed mock interview assessments view
+    │   ├── index.css               # Global theme tokens and signature styling
+    │   └── main.jsx                # React root mount
+    └── package.json
 ```
 
 ---
 
 ## 5. Backend Design
 
-### 5.1 Server Setup
-
-**File:** `backend/server.js`
-
-The entry point bootstraps the Express app with the following middleware and config:
-
-```
-express.json({ limit: '50mb' })        ← large payload for imageBase64
-express.urlencoded({ limit: '50mb' })  ← form data support
-cors()                                 ← open CORS for local dev
-/api/auth   → authRoutes
-/api/problems → problemRoutes
-/api/status → health check endpoint
-WebSocketServer on same http.Server    ← real-time scaffold
-mongoose.connect(MONGO_URI)            ← Atlas connection
-server.listen(5000)
-```
-
-> **Note:** The MongoDB connection string is hardcoded with credentials currently embedded in `server.js`. This should be moved to a `.env` file before any deployment.
-
----
+### 5.1 Server Setup & Middleware
+- **JSON & URL-Encoded Parsers:** 50MB payload limits to support base64 problem screenshot attachments.
+- **Cookie Parser:** Parses secure HTTP-only session cookies.
+- **CORS Config:** Configured with `credentials: true` for local client requests.
+- **Rate Limiting:** Protects authentication and execution endpoints against abuse.
 
 ### 5.2 Database Models
 
-#### `User` Model — `backend/models/User.js`
+#### `User` Model (`models/User.js`)
+- `name`: String, required.
+- `email`: String, required, unique, lowercase.
+- `password`: Hashed using `bcrypt.genSalt(10)` in a pre-save hook.
+- `phone`: String, optional (`default: undefined`).
+- **Partial Index:**
+  ```javascript
+  UserSchema.index(
+    { phone: 1 },
+    {
+      unique: true,
+      partialFilterExpression: { phone: { $type: "string" } }
+    }
+  );
+  ```
+  *Ensures users who register without a phone never trigger MongoDB `null` duplicate key collisions (E11000).*
+- `isEmailVerified` / `isPhoneVerified`: Boolean, defaults to `true`.
+- `deliveryPreferences`: Delivery time, timezone, email and WhatsApp toggles.
 
-| Field | Type | Constraints |
-|---|---|---|
-| `name` | String | required |
-| `email` | String | required, unique |
-| `password` | String | required (plain text — not hashed yet!) |
-| `createdAt` | Date | auto via `timestamps: true` |
-| `updatedAt` | Date | auto via `timestamps: true` |
+#### `Problem` Model (`models/Problem.js`)
+- `userName`: Problem owner reference.
+- `name`: Title of the coding problem.
+- `link`: Canonical problem URL.
+- `pattern`: Folder categorization tag (e.g. *Two Pointers*, *Graph BFS*).
+- `difficulty`: `Easy` | `Medium` | `Hard`.
+- `notes`: Markdown approach notes.
+- `imageBase64`: Screenshot data.
+- **Duplicate Prevention Policy:** URL-specific check allows identical question names if their problem URLs differ, enabling users to store problem links from multiple platforms.
 
-#### `Problem` Model — `backend/models/Problem.js`
+#### `DailyChallenge` Model (`models/DailyChallenge.js`)
+- `userId`: Owner reference.
+- `challengeDate`: Date formatted string (YYYY-MM-DD).
+- `questionA`: Main problem details + `allLinks: [{ title, link, pattern, difficulty, problemId }]`.
+- `questionB`: AI-generated variant question reference.
+- `completedA` / `completedB`: Completion booleans.
 
-| Field | Type | Constraints |
-|---|---|---|
-| `userName` | String | required — acts as owner FK (denormalised) |
-| `name` | String | required — problem title |
-| `link` | String | optional — LeetCode/problem URL |
-| `pattern` | String | required — used as the "folder" grouping key |
-| `difficulty` | String | enum: `Easy`, `Medium`, `Hard`; default `Medium` |
-| `notes` | String | optional — user's approach notes |
-| `imageBase64` | String | optional — base64-encoded screenshot |
-| `createdAt` | Date | default: `Date.now` |
+#### `AIGeneratedQuestion` Model (`models/AIGeneratedQuestion.js`)
+- `baseProblemName`: Originating problem name.
+- `pattern`: Algorithmic archetype.
+- `title`: Generated variant title.
+- `description`, `constraints`, `examples`: Formatted problem specification.
+- `testCases`: Array of `{ input, expectedOutput }` for unit tests.
+- `referenceSolution`: Verified reference solution code for sandbox validation.
 
-> **Design decision:** `userName` is used as a denormalised string key instead of a MongoDB ObjectId reference to `User`. This simplifies queries but makes the system vulnerable to orphaned problems if a user changes their name or is deleted.
-
----
-
-### 5.3 API Routes
-
-#### Auth Routes — `/api/auth`
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/auth/signup` | Creates a new user. Validates email uniqueness. Returns 201 on success. |
-| `POST` | `/api/auth/login` | Validates email + plain-text password. Returns `{ message, name }` on success. |
-
-**Current limitation:** Passwords are stored and compared in plain text. `bcryptjs` is installed but unused.
-
----
-
-#### Problem Routes — `/api/problems`
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/problems` | Create a new problem. Requires `userName`, `name`, `pattern`. |
-| `GET` | `/api/problems/:userName` | Get all problems for a user, sorted by `createdAt` descending. |
-| `PUT` | `/api/problems/folder/:userName/:oldPattern` | Bulk rename — updates `pattern` on all matching problems for the user. |
-| `DELETE` | `/api/problems/folder/:userName/:pattern` | Bulk delete — removes all problems under this folder for the user. |
-
-> **Important route ordering note:** Express 5 route matching can be ambiguous between `/folder/:userName/:pattern` and `/:userName`. Since the folder routes come first in the file, they match before the generic `/:userName` GET route — this works correctly as long as no user is named `"folder"`.
+#### `PracticeAttempt` Model (`models/PracticeAttempt.js`)
+- Logs code submissions: `userId`, `questionType` (`user` vs `ai`), `code`, `language`, `status` (`passed` | `failed`), `testCasesPassed`, `runtimeMs`.
 
 ---
 
 ## 6. Frontend Design
 
-### 6.1 App Architecture & Navigation
+### 6.1 View Navigation & Deep Linking
+The application utilizes a lightweight, reactive state router in `App.jsx` with session verification on load:
 
-The app uses a **custom client-side view router** built entirely in `App.jsx` with React `useState`. There is **no React Router** involved. Navigation state is a single string `currentView`.
+| View Identifier | Component | Description |
+|---|---|---|
+| `'login'` | `LoginPage.jsx` | User sign-in |
+| `'signup'` | `Signup.jsx` | Zero-friction user registration |
+| `'dashboard_home'` | `DashboardHome.jsx` | Primary analytics dashboard |
+| `'folders'` | `MyFolders.jsx` | Folder grid & problem management |
+| `'add_problem'` | `AddNewProblemForm.jsx` | Modal problem creation form |
+| `'revision_dashboard'` | `RevisionModeDashboard.jsx` | Spaced repetition queue & Topics breakdown |
+| `'daily_challenge'` | `DailyChallengeView.jsx` | Split-screen compiler & practice workspace |
+| `'sheets'` | `DsaSheetsView.jsx` | Curated DSA sheets (Striver, CSES, Fraz) |
+| `'mock_tests'` | `MockTestsView.jsx` | Timed mock interview assessments |
 
-```
-currentView values:
-  'login'              ← default, shown to unauthenticated users
-  'signup'
-  'dashboard_home'     ← landing after login
-  'folders'
-  'add_problem'
-  'revision_dashboard'
-  'problem_review'
-```
-
-`isLoggedIn` boolean gates all authenticated routes. After login, `userName` is stored in `localStorage` and used across all components for API queries.
-
-A floating **debug navigation bar** is rendered in the bottom-right corner when logged in (`App.jsx`, lines 28–36). This is a development convenience and should be removed in production.
-
-```jsx
-// App.jsx — navigation model
-const [currentView, setCurrentView] = useState('login');
-const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-// Each view renders only when its condition is met:
-{isLoggedIn && currentView === 'folders' && <MyFolders navigate={setCurrentView} />}
-```
-
-All components receive `navigate` as a prop, which is simply `setCurrentView` — allowing any component to trigger a view transition.
-
----
-
-### 6.2 Component Breakdown
-
-#### `LoginPage.jsx`
-- Controlled form with `email` and `password` state
-- On submit: `POST /api/auth/login` → stores `data.name` in `localStorage` → calls `onLoginSuccess()` which sets `isLoggedIn = true` and navigates to `dashboard_home`
-- Links to `Signup` via `navigate('signup')`
-
-#### `Signup.jsx`
-- Similar to LoginPage — `POST /api/auth/signup`
-- On success navigates to `login`
-
-#### `DashboardHome.jsx`
-- On mount: reads `userName` from localStorage, fetches `/api/problems/:userName`
-- Computes derived data locally:
-  - `totalProblems`, `easyCount`, `mediumCount`, `hardCount`
-  - `recentFolders` — first 3 unique patterns
-  - `recentProblemsList` — first 4 problems (already sorted desc by server)
-  - `currentStreak` — via `calculateStreak()` helper
-- Renders: welcome header, streak badge, stats bento grid, recent folders, recent problems
-
-#### `MyFolders.jsx`
-- Fetches all problems on mount (same as DashboardHome)
-- Groups problems into a `folders` object keyed by `pattern`:
-  ```js
-  const folders = problems.reduce((acc, prob) => {
-    if (!acc[prob.pattern]) acc[prob.pattern] = [];
-    acc[prob.pattern].push(prob);
-    return acc;
-  }, {});
-  ```
-- **Folder grid view** — clicking a folder sets `selectedFolder` and renders the folder detail view
-- **Folder detail view** — grid of problem cards with image, notes, difficulty badge, and solve link
-- **Context menu** on each folder card (three-dot `more_vert` icon):
-  - **Rename** → opens `folderToEdit` modal → calls `PUT /api/problems/folder/:userName/:oldPattern`
-  - **Delete** → opens `folderToDelete` confirmation modal → calls `DELETE /api/problems/folder/:userName/:pattern`
-- **Image lightbox** — clicking a problem's image opens `zoomedImage` state → fullscreen modal
-- Also runs the **Daily Challenge logic** (shared with `RevisionModeDashboard`)
-
-#### `AddNewProblemForm.jsx`
-- On mount: fetches existing patterns to populate `<datalist>` for pattern autocomplete
-- Form fields: `name`, `link`, `pattern`, `difficulty` (toggle buttons), `notes`, `imageBase64` (file upload → converted via `FileReader`)
-- On save: `POST /api/problems` → navigates to `folders` on success
-- Visually renders a **blurred/greyed-out folders background** behind a modal overlay for context
-
-#### `RevisionModeDashboard.jsx`
-- Fetches all problems for the user on mount
-- Renders a **Revision Queue** — all problems list with difficulty badges and solve links
-- Contains the **Daily Challenge card** (sidebar right)
-- Shows **live streak count** via `calculateStreak()`
-- Runs the exact same Daily Challenge selection logic as `MyFolders`
-
-#### `IndividualProblemReview.jsx`
-- Scaffolded — exists in the codebase but not yet functionally implemented in the navigation flow
+### 6.2 Session Rehydration
+On application mount, `App.jsx` issues a request to `GET /api/auth/me`. If a valid HTTP-only cookie token is present, the session is silently rehydrated into `currentUser`, preventing unnecessary logouts upon page refresh.
 
 ---
 
 ## 7. Core Feature Implementations
 
-### 7.1 Authentication Flow
+### 7.1 Authentication & Session Flow
+1. **Registration:** User enters Name, Email, and Password in `Signup.jsx`.
+2. Form submits to `POST /api/auth/signup`.
+3. Backend hashes password, sets `isEmailVerified: true`, saves the document (omitting `phone` to satisfy the partial index), signs a JWT token, and attaches it via HTTP-only cookie.
+4. Response returns 201 with user object; client logs the user in immediately without any OTP verification bottleneck.
 
-```
-User fills Login form
-    → POST /api/auth/login { email, password }
-    → Server: User.findOne({ email }) → compare plain-text password
-    → Response: { message: "Login successful", name: "Harsh" }
-    → Client: localStorage.setItem('userName', 'Harsh')
-    → App.isLoggedIn = true → navigate('dashboard_home')
-```
+### 7.2 Interactive Practice & Split-Screen Compiler
+1. User enters `DailyChallengeView.jsx` in `'random'` or `'daily'` mode.
+2. Left pane displays Problem Statement, Examples, Constraints, and all platform links.
+3. Right pane provides an interactive code editor supporting **JavaScript** and **Python**.
+4. Clicking **Run Code** or **Submit Solution** posts code to `POST /api/compiler/run` or `POST /api/compiler/submit`.
+5. Code executes in an isolated environment against test cases with output capture, duration profiling, and diagnostic diffs.
 
-**Session persistence:** There is **no JWT or session token**. The only persistence between page refreshes is the `userName` in `localStorage`. If the page is refreshed, `isLoggedIn` resets to `false` and the user is sent back to the login page, despite `userName` being present in storage.
+### 7.3 Semantic AI Question Generation
+1. `detectProblemCategory(baseProblemName, pattern)` inspects problem titles for semantic keywords (e.g. "Two Sum", "Sliding Window", "Subarray", "Binary Search", "Dynamic Programming").
+2. Generates a tailored problem variant matching the exact algorithmic paradigm with validated test cases and reference solutions.
+3. Rotates variant selections to avoid repetitive suggestions.
 
----
+### 7.4 Multi-Platform Dual Link Aggregation
+1. When a problem has multiple entries with identical titles across different folders or URLs (e.g. LeetCode and GeeksforGeeks links), `challenges.js` invokes `resolveAllLinksForQuestion()`.
+2. All unique URLs are packaged into `questionA.allLinks`.
+3. `DailyChallengeView.jsx` displays badges for each external link side-by-side in both the problem header and compiler toolbar.
 
-### 7.2 Problem Management (CRUD)
+### 7.5 Industry DSA Sheets Engine (`DsaSheetsView`)
+- Houses curated question catalogs:
+  - **Striver's A2Z DSA Sheet**
+  - **CSES Problem Set**
+  - **Fraz's SDE Sheet**
+- Features instant keyword search and difficulty filtering.
+- Supports "+ Add to Revision" (auto-populating the user's folders) and "Practice in Compiler".
 
-```
-CREATE  →  AddNewProblemForm → POST /api/problems
-READ    →  All components fetch GET /api/problems/:userName on mount
-UPDATE  →  MyFolders folder rename → PUT /api/problems/folder/:u/:oldPattern
-DELETE  →  MyFolders folder delete → DELETE /api/problems/folder/:u/:pattern
-```
+### 7.6 Timed DSA Mock Assessments (`MockTestsView`)
+- Standardized mock tests simulating FAANG and top-tier technical interviews.
+- Integrated countdown timers, question jumping, example I/O testing, and grading.
 
-There is currently **no individual problem edit or delete** — only bulk folder-level operations.
+### 7.7 Topics-Based Revision Mode
+- In `RevisionModeDashboard.jsx`, the **Topics** tab aggregates all saved problems by pattern/folder.
+- Displays problem count, completion metrics, and difficulty tags (Easy/Medium/Hard).
+- Expandable accordion cards provide instant links to solve online or practice within the compiler.
 
----
-
-### 7.3 Folder Management
-
-Folders are **not a separate database collection**. They are a virtual concept derived from the `pattern` field on `Problem` documents. The value of `problem.pattern` serves as the folder name.
-
-- **Creating a folder** = adding the first problem with a new `pattern` value
-- **Renaming a folder** = `Problem.updateMany({ userName, pattern: oldPattern }, { $set: { pattern: newPattern } })`
-- **Deleting a folder** = `Problem.deleteMany({ userName, pattern })`
-
-This means deleting a folder **permanently deletes all problems in it**.
-
----
-
-### 7.4 Daily Challenge System
-
-This logic is duplicated identically in both `MyFolders.jsx` and `RevisionModeDashboard.jsx`. It uses `localStorage` to persist state across page loads within the same day.
-
-```
-On fetchProblems() success:
-
-1. Get today's date string (YYYY-MM-DD)
-2. Check localStorage:
-     dailyChallengeDate  ← last date a challenge was set
-     dailyChallengeId    ← the problem _id chosen that day
-     recentChallenges    ← JSON array of last 5 chosen _ids
-
-3. IF storedDate === today AND storedProblemId exists:
-     → Find that problem in fetched data and set as dailyChallenge (no re-roll)
-
-4. ELSE (new day or first time):
-     → Filter out recentChallenges from available problems
-     → If none left: shrink recentChallenges to last 1, retry
-     → If still none: use full problem list
-     → Pick a random problem from availableProblems
-     → Update localStorage: date, id, recentChallenges (capped at 5)
-     → setDailyChallenge(randomProb)
-```
-
-**Purpose:** Ensures a different problem is shown each day, and avoids showing recently-seen problems. The 5-problem history window prevents the same problems from appearing in consecutive days.
+### 7.8 Notification & Delivery Scheduler
+- `scheduler.js` runs in the background polling every 60 seconds.
+- Dispatches automated revision reminders via **Resend Email API** and **Twilio SMS / WhatsApp**.
+- Supports interactive WhatsApp webhooks (`/api/webhooks/whatsapp`) for mobile responses.
 
 ---
 
-### 7.5 Streak Calculation
+## 8. Data Flow & System Diagrams
 
-Also duplicated across `DashboardHome`, `MyFolders`, and `RevisionModeDashboard`:
-
-```js
-const calculateStreak = (problemsArray) => {
-  // 1. Extract unique dates (YYYY-MM-DD) from createdAt timestamps
-  // 2. Sort descending
-  // 3. Start from today — if no problem added today, check yesterday
-  // 4. Walk backwards counting consecutive days that have at least 1 problem
-  // 5. Return streak count
-};
-```
-
-**Definition of streak:** Number of consecutive calendar days on which at least one problem was **created** (not necessarily solved). This uses `createdAt` date, not a dedicated "solved on" date.
-
----
-
-## 8. Data Flow Diagrams
-
-### Login Flow
-```
-LoginPage
-  │  POST /api/auth/login
-  ▼
-auth.js (Express route)
-  │  User.findOne({ email })
-  ▼
-MongoDB (users collection)
-  │  { name, email, password }
-  ▼
-auth.js: compare password (plain text)
-  │  res.json({ name })
-  ▼
-LoginPage: localStorage.setItem('userName', name)
-  │  onLoginSuccess()
-  ▼
-App.jsx: isLoggedIn=true, currentView='dashboard_home'
-```
-
-### Problem Add Flow
-```
-AddNewProblemForm
-  │  POST /api/problems { userName, name, link, pattern, difficulty, notes, imageBase64 }
-  ▼
-problems.js (Express route)
-  │  new Problem({...}).save()
-  ▼
-MongoDB (problems collection)
-  │  201 Created
-  ▼
-AddNewProblemForm: navigate('folders')
-```
-
-### Folder Rename Flow
-```
-MyFolders (user clicks Rename in context menu)
-  │  PUT /api/problems/folder/:userName/:oldPattern { newPattern }
-  ▼
-problems.js
-  │  Problem.updateMany({ userName, pattern: oldPattern }, { $set: { pattern: newPattern } })
-  ▼
-MongoDB: all matching documents updated
-  │  { modifiedCount }
-  ▼
-MyFolders: setFolderToEdit(null) → fetchProblems() (re-fetch all)
-```
-
----
-
-## 9. System Flowcharts
-
-### 9.1 Overall System Architecture
-
-```mermaid
-graph TD
-    Browser["🌐 Browser\nReact 19 + Vite + TailwindCSS"]
-    Express["⚙️ Express Server\nPort 5000"]
-    MongoDB["🗄️ MongoDB Atlas\nCollections: users | problems"]
-    WS["🔌 WebSocket Server\n(scaffolded — unused)"]
-    LS["💾 localStorage\nuserName · dailyChallenge · streak"]
-
-    Browser -->|"HTTP REST\nfetch() API"| Express
-    Express -->|"Mongoose ODM"| MongoDB
-    MongoDB -->|"JSON response"| Express
-    Express -->|"JSON response"| Browser
-    Express --- WS
-    Browser <-->|"read / write"| LS
-```
-
----
-
-### 9.2 Authentication Flow
+### Overall Architecture & Navigation
 
 ```mermaid
 flowchart TD
-    A([User visits app]) --> B{isLoggedIn?}
-    B -->|No| C[Show LoginPage]
-    B -->|Yes| D[Show DashboardHome]
+    subgraph Client [Frontend UI Layer]
+        AuthView[Login / Signup]
+        Dash[Dashboard Home]
+        Folders[My Folders]
+        Topics[Revision Topics]
+        Workspace[Daily Challenge Compiler]
+        Sheets[Curated DSA Sheets]
+        Mock[Mock Tests]
+    end
 
-    C --> E[User fills email + password]
-    E --> F[POST /api/auth/login]
-    F --> G{User found\nin MongoDB?}
-    G -->|No| H[❌ Show error alert]
-    H --> C
-    G -->|Yes| I{Password\nmatches?}
-    I -->|No| H
-    I -->|Yes| J["✅ Return { name }"]
-    J --> K["localStorage.setItem('userName', name)"]
-    K --> L["App: isLoggedIn = true"]
-    L --> D
+    subgraph Backend [Express API Server]
+        AuthRoute[/api/auth]
+        ProbRoute[/api/problems]
+        ChalRoute[/api/challenges]
+        CompRoute[/api/compiler]
+        AIService[AI Category Engine]
+        Scheduler[Cron Scheduler]
+    end
 
-    C --> M[Click 'Create Account']
-    M --> N[Show Signup page]
-    N --> O[POST /api/auth/signup]
-    O --> P{Email\nalready exists?}
-    P -->|Yes| Q[❌ Show error alert]
-    P -->|No| R[Create new User in DB]
-    R --> S[✅ Navigate back to Login]
+    subgraph Database [MongoDB Atlas]
+        UserCol[(users)]
+        ProbCol[(problems)]
+        ChalCol[(dailychallenges)]
+        AICol[(aigeneratedquestions)]
+        AttemptCol[(practiceattempts)]
+    end
+
+    AuthView --> AuthRoute
+    Dash --> ProbRoute
+    Folders --> ProbRoute
+    Topics --> ProbRoute
+    Workspace --> ChalRoute
+    Workspace --> CompRoute
+    Sheets --> ProbRoute
+    Mock --> CompRoute
+
+    ChalRoute --> AIService
+    AuthRoute --> UserCol
+    ProbRoute --> ProbCol
+    ChalRoute --> ChalCol
+    AIService --> AICol
+    CompRoute --> AttemptCol
+    Scheduler --> ChalCol
 ```
 
----
-
-### 9.3 App Navigation & Routing
+### Authentication Flow (Zero-Friction Registration)
 
 ```mermaid
-flowchart LR
-    Login([login]) -->|onLoginSuccess| Dash([dashboard_home])
-    Login -->|navigate signup| Signup([signup])
-    Signup -->|on success| Login
+sequenceDiagram
+    autonumber
+    actor User
+    participant Frontend as Signup.jsx
+    participant Backend as auth.js
+    participant DB as MongoDB (users)
 
-    Dash -->|sidebar| Folders([folders])
-    Dash -->|sidebar| Rev([revision_dashboard])
-    Dash -->|button| Add([add_problem])
-
-    Folders -->|navigate| Add
-    Folders -->|navigate| Rev
-    Folders -->|navigate| Dash
-
-    Add -->|on save / discard| Folders
-
-    Rev -->|sidebar| Dash
-    Rev -->|sidebar| Folders
-
-    style Login fill:#6366f1,color:#fff
-    style Signup fill:#6366f1,color:#fff
-    style Dash fill:#0ea5e9,color:#fff
-    style Folders fill:#0ea5e9,color:#fff
-    style Add fill:#f59e0b,color:#fff
-    style Rev fill:#10b981,color:#fff
+    User->>Frontend: Enter Name, Email, Password
+    Frontend->>Backend: POST /api/auth/signup
+    Backend->>DB: Check email & partial index phone
+    Backend->>Backend: bcrypt.hash(password, 10)
+    Backend->>DB: Save user (phone omitted)
+    Backend->>Backend: jwt.sign(token)
+    Backend-->>Frontend: 201 Created + HTTP-only Cookie
+    Frontend->>Frontend: onLoginSuccess(user)
+    Frontend-->>User: Instant Redirect to Dashboard
 ```
 
 ---
 
-### 9.4 Add Problem Flow
+## 9. Resolved Architecture Milestones & Future Roadmap
 
-```mermaid
-flowchart TD
-    A([User opens Add Problem form]) --> B["Fetch existing patterns\nGET /api/problems/:userName"]
-    B --> C[Populate datalist autocomplete]
-    C --> D[User fills form\nname · link · pattern · difficulty · notes]
-    D --> E{Optional:\nUpload image?}
-    E -->|Yes| F[FileReader converts\nimage to base64]
-    F --> G[Preview shown in form]
-    G --> H[Click Save Problem]
-    E -->|No| H
-    H --> I{name AND\npattern filled?}
-    I -->|No| J[❌ Alert: fill required fields]
-    J --> D
-    I -->|Yes| K["POST /api/problems\n{ userName, name, link, pattern,\n  difficulty, notes, imageBase64 }"]
-    K --> L{Server\nresponse?}
-    L -->|201 Created| M[✅ navigate to folders]
-    L -->|Error| N[❌ Alert error message]
-    N --> D
+### ✅ Completed & Resolved
+- [x] **Secure Password Hashing:** Salted `bcryptjs` encryption fully implemented.
+- [x] **Persistent Sessions:** JWT signed tokens in HTTP-only cookies with silent `/api/auth/me` restore on page reload.
+- [x] **Zero-Friction Signup:** No OTP blockers; users register and access the workspace immediately.
+- [x] **Collision-Free Phone Indexing:** MongoDB `partialFilterExpression` prevents `null` duplicate key collisions (E11000).
+- [x] **In-Browser Polyglot Compiler:** Sandboxed execution for JavaScript and Python with unit test validation.
+- [x] **Semantic AI Question Engine:** Pattern-aware variant generation avoiding repetitive placeholders.
+- [x] **Multi-Platform URL Support:** Allows identical question names across platforms and displays dual links side-by-side.
+- [x] **Industry DSA Sheets:** Striver's A2Z Sheet, CSES Problem Set, and Fraz's SDE Sheet integrated with one-click revision imports.
+- [x] **Timed Mock Tests:** Interview sprint environments with active timers and automated test runner.
+- [x] **Interactive Topics View:** Full problem aggregation by algorithmic pattern in Revision Mode.
+- [x] **Automated Scheduler:** Multi-channel daily revision reminders via Resend and Twilio.
 
-    P([Click Discard Draft]) --> M
-```
-
----
-
-### 9.5 Daily Challenge Algorithm
-
-```mermaid
-flowchart TD
-    A([fetchProblems called]) --> B["Fetch GET /api/problems/:userName"]
-    B --> C{problems.length > 0?}
-    C -->|No| Z([No challenge — show placeholder])
-    C -->|Yes| D["Read localStorage:\ndailyChallengeDate\ndailyChallengeId\nrecentChallenges array"]
-
-    D --> E{storedDate\n=== today?}
-    E -->|Yes| F{storedProblemId\nfound in data?}
-    F -->|Yes| G[✅ Set that problem as dailyChallenge\nNo re-roll]
-    F -->|No| H[Proceed to pick new one]
-
-    E -->|No — new day| H
-
-    H --> I["Filter out recentChallenges\nfrom problems list"]
-    I --> J{availableProblems\n.length > 0?}
-    J -->|No| K["Shrink recentChallenges to last 1\nRetry filter"]
-    K --> L{Still empty?}
-    L -->|Yes| M[Use full problems list]
-    L -->|No| N[Use filtered list]
-    J -->|Yes| N
-
-    M --> O[Pick random problem]
-    N --> O
-
-    O --> P["Update localStorage:\n• dailyChallengeDate = today\n• dailyChallengeId = problem._id\n• push to recentChallenges\n• cap recentChallenges at 5"]
-    P --> Q[✅ setDailyChallenge]
-    G --> Q
-```
-
----
-
-### 9.6 Folder Management Operations
-
-```mermaid
-flowchart TD
-    A([MyFolders loads]) --> B["GET /api/problems/:userName"]
-    B --> C["Group by pattern field\nfolders = { 'Sliding Window': [...], ... }"]
-    C --> D[Render folder grid]
-
-    D --> E{User action?}
-
-    E -->|Click folder card| F[Set selectedFolder\nRender problem cards inside]
-    F --> G{Click image?}
-    G -->|Yes| H[Open image lightbox modal]
-    H -->|Click outside| F
-
-    E -->|Click three-dot menu| I[Show context menu\nRename / Delete]
-
-    I -->|Rename| J[Open Rename modal\nwith current name pre-filled]
-    J --> K{New name\nvalid?}
-    K -->|No| J
-    K -->|Yes| L["PUT /api/problems/folder\n/:userName/:oldPattern\n{ newPattern }"]
-    L --> M["Problem.updateMany\nall docs with old pattern"]
-    M --> N[✅ re-fetch all problems]
-
-    I -->|Delete| O[Open Delete confirmation modal]
-    O -->|Cancel| D
-    O -->|Confirm| P["DELETE /api/problems/folder\n/:userName/:pattern"]
-    P --> Q["Problem.deleteMany\nall docs with that pattern"]
-    Q --> R[✅ re-fetch all problems]
-    N --> D
-    R --> D
-```
-
----
-
-## 10. State Management
-
-The app uses **React local state only** (`useState`, `useEffect`). There is no global state library (no Redux, no Zustand, no Context API used).
-
-| State | Location | Scope |
-|---|---|---|
-| `isLoggedIn` | `App.jsx` | Global — gates all authenticated views |
-| `currentView` | `App.jsx` | Global — drives the entire navigation |
-| `userName` | `localStorage` | Persistent across page loads (but no session token) |
-| `problems` | Each view component | Local — re-fetched on every mount |
-| `dailyChallenge` | `MyFolders`, `RevisionModeDashboard` | Local + localStorage for persistence |
-| `dailyChallengeDate/Id/recentChallenges` | `localStorage` | Cross-session daily persistence |
-| Form fields (`name`, `link`, etc.) | `AddNewProblemForm` | Local |
-| Folder UI state (`selectedFolder`, `openFolderMenu`, etc.) | `MyFolders` | Local |
-
----
-
-## 11. Known Limitations & Future Work
-
-### Security
-- [ ] **Passwords are stored in plain text.** `bcryptjs` is installed — hashing must be implemented before any real use.
-- [ ] **No JWT or session tokens.** After a page refresh, the user is logged out despite `userName` being in localStorage. A proper token-based auth system should be implemented.
-- [ ] **MongoDB URI is hardcoded** in `server.js` with credentials. Move to `.env` + `dotenv`.
-- [ ] **No input sanitisation** on the backend — all inputs are trusted directly.
-
-### Architecture
-- [ ] **No individual problem edit/delete.** Only bulk folder operations are supported.
-- [ ] **Daily challenge logic is duplicated** across `MyFolders` and `RevisionModeDashboard`. Should be extracted into a shared utility function or a custom React hook (`useDailyChallenge`).
-- [ ] **`calculateStreak` is duplicated** in 3 components. Should be a shared utility.
-- [ ] **`userName` as foreign key** — using the user's name string as the problem owner ID is fragile. Should replace with the MongoDB `_id` of the user.
-- [ ] **No React Router.** The custom `currentView` string approach won't support browser back/forward, deep linking, or bookmarkable URLs.
-- [ ] **WebSocket server** is initialised but never consumed by the frontend.
-- [ ] **`IndividualProblemReview` is scaffolded** but not implemented.
-
-### UX / Features
-- [ ] **No session persistence** — users must re-login on every page refresh.
-- [ ] **Search bar is UI-only** — not wired to any filter logic.
-- [ ] **Filter/Sort buttons** on lists are UI-only — no actual sorting/filtering implemented.
-- [ ] **Streak uses `createdAt`** — not a dedicated "revision done" tracking field. This means adding old problems retroactively could inflate the streak.
-- [ ] **No spaced repetition** algorithm — the revision queue is purely a flat list. There is no SM-2 or similar algorithm to schedule optimal review intervals.
-- [ ] **Mobile navigation** is partially implemented (bottom nav in `MyFolders`) but not fully reactive across all views.
-
----
-
-*Document written for the `algo_revis` project at commit state as of April 2026.*
+### 🔮 Future Roadmap
+- [ ] Add Monaco Editor / CodeMirror enhanced syntax highlighting and auto-completion.
+- [ ] Implement spaced repetition interval algorithms (e.g. SuperMemo SM-2) for review scheduling.
+- [ ] Integrate C++ and Java execution environments in the compiler sandbox.

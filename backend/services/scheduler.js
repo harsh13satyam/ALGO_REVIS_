@@ -1,0 +1,240 @@
+const User = require('../models/User');
+const DailyChallenge = require('../models/DailyChallenge');
+const { selectRevisionProblem } = require('./revisionService');
+const { generateSimilarQuestion } = require('./aiService');
+const { sendDailyChallengeEmail } = require('./emailService');
+const { sendDailyChallengeWhatsApp } = require('./whatsappService');
+
+/**
+ * Returns formatted date string 'YYYY-MM-DD' for a given timezone
+ */
+const getLocalDateString = (timezone = 'UTC') => {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    return formatter.format(new Date()); // Formats as YYYY-MM-DD
+  } catch {
+    return new Date().toISOString().split('T')[0];
+  }
+};
+
+/**
+ * Returns current 'HH:mm' string for a given timezone
+ */
+const getLocalTimeString = (timezone = 'UTC') => {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    return formatter.format(new Date());
+  } catch {
+    const now = new Date();
+    return `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
+  }
+};
+
+/**
+ * Atomically generates or retrieves the Daily Challenge for a user and date
+ * Idempotent: Guarantees exactly one challenge per user per scheduled date.
+ */
+const getOrCreateDailyChallenge = async (user, scheduledDate = null) => {
+  const date = scheduledDate || getLocalDateString(user.deliveryPreferences?.timezone || 'UTC');
+
+  // 1. Look for existing challenge
+  let challenge = await DailyChallenge.findOne({ user: user._id, scheduledDate: date });
+  if (challenge) {
+    return challenge;
+  }
+
+  // 2. Select Question A (Revision)
+  const questionAProblem = await selectRevisionProblem(user);
+
+  // 3. Generate Question B (AI similar question)
+  const aiQuestion = await generateSimilarQuestion(
+    questionAProblem.pattern,
+    questionAProblem.difficulty,
+    questionAProblem.name
+  );
+
+  // 4. Save new challenge with concurrency-safe duplicate key handling
+  try {
+    challenge = new DailyChallenge({
+      user: user._id,
+      scheduledDate: date,
+      questionA: {
+        problemId: questionAProblem._id,
+        name: questionAProblem.name,
+        link: questionAProblem.link || '',
+        pattern: questionAProblem.pattern || 'General',
+        difficulty: questionAProblem.difficulty || 'Medium',
+        notes: questionAProblem.notes || '',
+        completed: false,
+        source: 'revision'
+      },
+      questionB: {
+        title: aiQuestion.title,
+        statement: aiQuestion.statement,
+        difficulty: aiQuestion.difficulty || 'Medium',
+        pattern: aiQuestion.pattern || questionAProblem.pattern,
+        constraints: aiQuestion.constraints || [],
+        examples: aiQuestion.examples || [],
+        testCases: aiQuestion.testCases || [],
+        referenceSolution: aiQuestion.referenceSolution || '',
+        explanation: aiQuestion.explanation || '',
+        completed: false,
+        source: 'ai'
+      },
+      deliveryStatus: {
+        email: { status: user.deliveryPreferences?.emailEnabled ? 'pending' : 'disabled' },
+        whatsapp: { status: user.deliveryPreferences?.whatsappEnabled ? 'pending' : 'disabled' }
+      }
+    });
+
+    await challenge.save();
+    return challenge;
+  } catch (err) {
+    // If concurrent worker saved it first (E11000 duplicate key error)
+    if (err.code === 11000) {
+      return DailyChallenge.findOne({ user: user._id, scheduledDate: date });
+    }
+    throw err;
+  }
+};
+
+/**
+ * Dispatches challenge to user via Email and WhatsApp independently
+ */
+const deliverChallenge = async (user, challenge) => {
+  const results = { email: null, whatsapp: null };
+
+  // 1. Email delivery
+  if (user.deliveryPreferences?.emailEnabled && challenge.deliveryStatus?.email?.status !== 'sent') {
+    try {
+      const emailRes = await sendDailyChallengeEmail(user, challenge);
+      challenge.deliveryStatus.email = {
+        status: emailRes.status || (emailRes.skipped ? 'disabled' : 'failed'),
+        sentAt: emailRes.success ? new Date() : null,
+        messageId: emailRes.messageId || null,
+        error: emailRes.error || null
+      };
+      results.email = emailRes;
+    } catch (e) {
+      console.error('Email dispatcher error:', e);
+      challenge.deliveryStatus.email = { status: 'failed', error: e.message };
+      results.email = { success: false, error: e.message };
+    }
+  }
+
+  // 2. WhatsApp delivery (completely isolated from email)
+  if (user.deliveryPreferences?.whatsappEnabled && challenge.deliveryStatus?.whatsapp?.status !== 'sent') {
+    try {
+      const waRes = await sendDailyChallengeWhatsApp(user, challenge);
+      challenge.deliveryStatus.whatsapp = {
+        status: waRes.status || (waRes.skipped ? 'disabled' : 'failed'),
+        sentAt: waRes.success ? new Date() : null,
+        messageId: waRes.messageId || null,
+        error: waRes.error || null
+      };
+      results.whatsapp = waRes;
+    } catch (e) {
+      console.error('WhatsApp dispatcher error:', e);
+      challenge.deliveryStatus.whatsapp = { status: 'failed', error: e.message };
+      results.whatsapp = { success: false, error: e.message };
+    }
+  }
+
+  await challenge.save();
+  return results;
+};
+
+/**
+ * Scheduled check: evaluates users whose preferred delivery time has arrived
+ */
+const runSchedulerTick = async () => {
+  try {
+    const users = await User.find({
+      $or: [
+        { 'deliveryPreferences.emailEnabled': true },
+        { 'deliveryPreferences.whatsappEnabled': true }
+      ]
+    });
+
+    for (const user of users) {
+      const tz = user.deliveryPreferences?.timezone || 'UTC';
+      const targetTime = user.deliveryPreferences?.time || '09:00';
+      const currentTime = getLocalTimeString(tz);
+      const currentDate = getLocalDateString(tz);
+
+      // Trigger if current time has reached target time
+      if (currentTime >= targetTime) {
+        // Atomic check: is today's challenge already generated and delivered?
+        const existing = await DailyChallenge.findOne({ user: user._id, scheduledDate: currentDate });
+        
+        const needsEmail = user.deliveryPreferences?.emailEnabled && 
+          (!existing || ['pending', 'failed'].includes(existing.deliveryStatus?.email?.status));
+        const needsWhatsApp = user.deliveryPreferences?.whatsappEnabled && 
+          (!existing || ['pending', 'failed'].includes(existing.deliveryStatus?.whatsapp?.status));
+
+        if (!existing || needsEmail || needsWhatsApp) {
+          console.log(`⏰ [Scheduler] Triggering daily delivery for ${user.email} (${currentDate} ${tz})`);
+          const challenge = await getOrCreateDailyChallenge(user, currentDate);
+          await deliverChallenge(user, challenge);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('❌ [Scheduler] Error during scheduler tick:', err.message);
+  }
+};
+
+/**
+ * Dev simulation trigger: immediately generates and dispatches challenge for user
+ */
+const simulateDailyDelivery = async (user) => {
+  const tz = user.deliveryPreferences?.timezone || 'UTC';
+  const currentDate = getLocalDateString(tz);
+
+  const challenge = await getOrCreateDailyChallenge(user, currentDate);
+  const deliveryResults = await deliverChallenge(user, challenge);
+
+  return {
+    challenge,
+    deliveryResults,
+    simulatedDate: currentDate
+  };
+};
+
+let schedulerTimer = null;
+
+const startScheduler = (intervalMs = 60000) => {
+  if (schedulerTimer) return;
+  console.log(`⏱️ [Scheduler] Background scheduler initialized (interval: ${intervalMs}ms)`);
+  // Run initial tick after 5 seconds to recover any missed deliveries on restart
+  setTimeout(() => runSchedulerTick(), 5000);
+  schedulerTimer = setInterval(runSchedulerTick, intervalMs);
+};
+
+const stopScheduler = () => {
+  if (schedulerTimer) {
+    clearInterval(schedulerTimer);
+    schedulerTimer = null;
+  }
+};
+
+module.exports = {
+  getOrCreateDailyChallenge,
+  deliverChallenge,
+  simulateDailyDelivery,
+  runSchedulerTick,
+  startScheduler,
+  stopScheduler,
+  getLocalDateString,
+  getLocalTimeString
+};

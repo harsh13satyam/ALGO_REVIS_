@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
-const AddNewProblemForm = ({ navigate }) => {
+import api from './api';
+
+const AddNewProblemForm = ({ navigate, user }) => {
   const [name, setName] = useState('');
   const [link, setLink] = useState('');
   const [pattern, setPattern] = useState('');
@@ -12,15 +14,15 @@ const AddNewProblemForm = ({ navigate }) => {
 
   useEffect(() => {
     const fetchPatterns = async () => {
-      const uName = localStorage.getItem('userName') || 'testUser';
       try {
-        const res = await fetch(`http://localhost:5000/api/problems/${uName}`);
-        if(res.ok) {
-          const probs = await res.json();
+        const probs = await api.getProblems();
+        if (Array.isArray(probs)) {
           const uniquePatterns = [...new Set(probs.map(p => p.pattern))];
-          if(uniquePatterns.length > 0) setExistingPatterns(uniquePatterns);
+          if (uniquePatterns.length > 0) setExistingPatterns(uniquePatterns);
         }
-      } catch(e) {}
+      } catch (e) {
+        console.error('Failed to fetch patterns:', e);
+      }
     };
     fetchPatterns();
   }, []);
@@ -43,31 +45,21 @@ const AddNewProblemForm = ({ navigate }) => {
     }
     
     setIsSubmitting(true);
-    const userName = localStorage.getItem('userName') || 'testUser';
+    const userName = user?.name || localStorage.getItem('userName') || 'user';
     
     try {
-      const response = await fetch('http://localhost:5000/api/problems', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userName,
-          name,
-          link,
-          pattern,
-          difficulty,
-          notes,
-          imageBase64
-        })
+      await api.createProblem({
+        userName,
+        name,
+        link,
+        pattern,
+        difficulty,
+        notes,
+        imageBase64
       });
-      
-      if (response.ok) {
-        navigate('folders');
-      } else {
-        const data = await response.json();
-        alert("Error: " + data.message);
-      }
+      navigate('folders');
     } catch (err) {
-      alert("Server error. Is the backend restarted?");
+      alert("Error saving problem: " + (err.message || 'Server error'));
     }
     setIsSubmitting(false);
   };

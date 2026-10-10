@@ -1,49 +1,127 @@
 require('dotenv').config();
 const express = require('express');
-const authRoutes = require('./routes/auth'); // ADD THIS LINE near the top
-const problemRoutes = require('./routes/problems');
-const { WebSocketServer } = require('ws');
-const mongoose = require('mongoose');
 const http = require('http');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const mongoose = require('mongoose');
+const { WebSocketServer } = require('ws');
+
+const { connectDB } = require('./config/db');
+const { startScheduler, stopScheduler } = require('./services/scheduler');
+
+// Route imports
+const authRoutes = require('./routes/auth');
+const problemRoutes = require('./routes/problems');
+const challengeRoutes = require('./routes/challenges');
+const whatsappWebhookRoutes = require('./routes/whatsappWebhook');
+const healthRoutes = require('./routes/health');
 
 const app = express();
 const server = http.createServer(app);
 
-// Enable CORS
-app.use(cors());
+// CORS configuration for local development and production
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(allowed => origin === allowed || allowed === '*')) {
+      return callback(null, true);
+    }
+    // In development, permit localhost on any port
+    if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:')) {
+      return callback(null, true);
+    }
+    callback(null, true); // Fallback permissive for development
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-app.use('/api/auth', authRoutes); // ADD THIS LINE
+
+// Mount API routes
+app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
+app.use('/api/challenges', challengeRoutes);
+app.use('/api/whatsapp/webhook', whatsappWebhookRoutes);
+app.use('/api/health', healthRoutes);
 
-// Set up WebSocket server
-const wss = new WebSocketServer({ server });
-
-wss.on('connection', (ws) => {
-  console.log('New WebSocket connection established');
-
-  ws.on('message', (message) => {
-    console.log(`Received message => ${message}`);
-    // Echo or broadcast logic can go here
+// Legacy hit check route
+app.get('/api/status', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    dbConnected: mongoose.connection.readyState === 1
   });
-
-  ws.send(JSON.stringify({ type: 'welcome', message: 'Connected to WebSocket server!' }));
 });
 
-// Setup MongoDB Connection
-// Note: Requires a local MongoDB instance running on default port.
-const MONGO_URI = process.env.MONGO_URI;
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('Connected to MongoDB successfully'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// Set up WebSocket server (retained for future real-time collaboration)
+const wss = new WebSocketServer({ server });
+wss.on('connection', (ws) => {
+  console.log('New WebSocket connection established');
+  ws.on('message', (message) => {
+    console.log(`Received message => ${message}`);
+  });
+  ws.send(JSON.stringify({ type: 'welcome', message: 'Connected to AlgoRevis WebSocket server!' }));
+});
 
-// Basic hit check route
-app.get('/api/status', (req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime() });
+// Centralized error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled Server Error:', err);
+  const status = err.status || 500;
+  const message = process.env.NODE_ENV === 'production' 
+    ? 'Internal Server Error' 
+    : (err.message || 'Server error');
+  res.status(status).json({ message });
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+
+// Initialize Database & Start Server
+const startServer = async () => {
+  // Connect to MongoDB Atlas
+  await connectDB();
+
+  // Start background scheduler
+  startScheduler(60000);
+
+  server.listen(PORT, () => {
+    console.log(`🚀 [AlgoRevis] Server listening on port ${PORT} (${process.env.NODE_ENV || 'development'})`);
+  });
+};
+
+// Graceful shutdown handling
+const gracefulShutdown = async (signal) => {
+  console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+  stopScheduler();
+  wss.close();
+  server.close(async () => {
+    console.log('HTTP server closed.');
+    await mongoose.connection.close(false);
+    console.log('MongoDB connection closed.');
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout.');
+    process.exit(1);
+  }, 10000);
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = { app, server, startServer };

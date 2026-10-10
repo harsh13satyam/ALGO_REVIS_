@@ -1,23 +1,30 @@
 import React, { useState, useEffect } from 'react';
+import api from './api';
 
-const DashboardHome = ({ navigate }) => {
-  const [userName, setUserName] = useState("User");
+const DashboardHome = ({ navigate, user }) => {
+  const [userName, setUserName] = useState(() => {
+    return user?.name || localStorage.getItem('userName') || "User";
+  });
   const [problems, setProblems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    let storedName = localStorage.getItem('userName');
-    if (storedName && storedName !== "undefined" && storedName !== "null") {
-      setUserName(storedName);
+    if (user?.name) {
+      setUserName(user.name);
+      localStorage.setItem('userName', user.name);
     } else {
-      storedName = "testUser";
+      api.getMe().then(data => {
+        if (data?.user?.name) {
+          setUserName(data.user.name);
+          localStorage.setItem('userName', data.user.name);
+        }
+      }).catch(() => {});
     }
 
     const fetchDashboardData = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/problems/${storedName}`);
-        if(res.ok) {
-          const data = await res.json();
+        const data = await api.getProblems();
+        if (Array.isArray(data)) {
           data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           setProblems(data);
         }
@@ -93,9 +100,17 @@ const DashboardHome = ({ navigate }) => {
             <span className="material-symbols-outlined" data-icon="create_new_folder">create_new_folder</span>
             <span className="font-body text-sm">Add New Folder</span>
           </a>
+          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('daily_challenge', { mode: 'random' }); }}>
+            <span className="material-symbols-outlined" data-icon="shuffle">shuffle</span>
+            <span className="font-body text-sm font-semibold">Random Practice</span>
+          </a>
+          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('daily_challenge', { mode: 'daily' }); }}>
+            <span className="material-symbols-outlined" data-icon="bolt">bolt</span>
+            <span className="font-body text-sm font-semibold">Daily Challenge</span>
+          </a>
           <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('revision_dashboard'); }}>
             <span className="material-symbols-outlined" data-icon="History_edu">history_edu</span>
-            <span className="font-body text-sm">Revision Mode</span>
+            <span className="font-body text-sm font-semibold">Revision Mode</span>
           </a>
           <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300 mt-auto" href="#">
             <span className="material-symbols-outlined" data-icon="settings">settings</span>
@@ -143,7 +158,7 @@ const DashboardHome = ({ navigate }) => {
           {/* Welcome Header */}
           <section className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <h2 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2 font-headline">Welcome back, {userName.split(" ")[0]}!</h2>
+              <h2 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2 font-headline">Welcome back, {(userName || "Curator").split(" ")[0]}!</h2>
               <p className="text-on-surface-variant font-medium">You're on a {currentStreak}-day revision streak. Ready to crack some trees today?</p>
             </div>
             <div className="bg-tertiary-fixed px-6 py-3 rounded-xl flex items-center gap-4">

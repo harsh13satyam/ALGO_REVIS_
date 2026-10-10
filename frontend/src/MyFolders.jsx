@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import api from './api';
 
-const MyFolders = ({ navigate }) => {
+const MyFolders = ({ navigate, user }) => {
   const [problems, setProblems] = useState([]);
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [zoomedImage, setZoomedImage] = useState(null);
@@ -50,10 +51,8 @@ const MyFolders = ({ navigate }) => {
   const fetchProblems = async () => {
     setIsLoading(true);
     try {
-      const uName = localStorage.getItem('userName') || 'testUser';
-      const res = await fetch(`http://localhost:5000/api/problems/${uName}`);
-      if(res.ok) {
-        const data = await res.json();
+      const data = await api.getProblems();
+      if(Array.isArray(data)) {
         setProblems(data);
         
         // Smart Daily Challenge Logic
@@ -67,15 +66,18 @@ const MyFolders = ({ navigate }) => {
             const todayProb = data.find(p => p._id === storedProblemId);
             if (todayProb) {
               setDailyChallenge(todayProb);
+            } else {
+              setDailyChallenge(data[0]);
+              localStorage.setItem('dailyChallengeId', data[0]._id);
             }
           } else {
             let availableProblems = data.filter(p => !recentChallenges.includes(p._id));
             if (availableProblems.length === 0) {
-              recentChallenges = recentChallenges.slice(-1); // Keep only the last one
+              recentChallenges = recentChallenges.slice(-1);
               availableProblems = data.filter(p => !recentChallenges.includes(p._id));
               if (availableProblems.length === 0) availableProblems = data;
             }
-            const randomProb = availableProblems[Math.floor(Math.random() * availableProblems.length)];
+            const randomProb = availableProblems[Math.floor(Math.random() * availableProblems.length)] || data[0];
             setDailyChallenge(randomProb);
             localStorage.setItem('dailyChallengeDate', todayStr);
             localStorage.setItem('dailyChallengeId', randomProb._id);
@@ -99,16 +101,10 @@ const MyFolders = ({ navigate }) => {
   const handleModifyFolder = async () => {
     if (!newFolderName.trim() || newFolderName === folderToEdit) return;
     try {
-      const uName = localStorage.getItem('userName') || 'testUser';
-      const res = await fetch(`http://localhost:5000/api/problems/folder/${uName}/${encodeURIComponent(folderToEdit)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newPattern: newFolderName })
-      });
-      if (res.ok) {
-        setFolderToEdit(null);
-        fetchProblems();
-      }
+      const uName = user?.name || localStorage.getItem('userName') || 'user';
+      await api.renameFolder(uName, folderToEdit, newFolderName);
+      setFolderToEdit(null);
+      fetchProblems();
     } catch (err) {
       console.error("Failed to rename:", err);
     }
@@ -116,14 +112,10 @@ const MyFolders = ({ navigate }) => {
 
   const handleDeleteFolder = async () => {
     try {
-      const uName = localStorage.getItem('userName') || 'testUser';
-      const res = await fetch(`http://localhost:5000/api/problems/folder/${uName}/${encodeURIComponent(folderToDelete)}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        setFolderToDelete(null);
-        fetchProblems();
-      }
+      const uName = user?.name || localStorage.getItem('userName') || 'user';
+      await api.deleteFolder(uName, folderToDelete);
+      setFolderToDelete(null);
+      fetchProblems();
     } catch (err) {
       console.error("Failed to delete:", err);
     }
@@ -160,9 +152,13 @@ const MyFolders = ({ navigate }) => {
             <span className="material-symbols-outlined" data-icon="History_edu">history_edu</span>
             <span className="font-medium">Revision Mode</span>
           </a>
-          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300 ease-in-out" href="#">
-            <span className="material-symbols-outlined" data-icon="settings">settings</span>
-            <span className="font-medium">Settings</span>
+          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300 ease-in-out" href="#" onClick={(e) => { e.preventDefault(); navigate('sheets'); }}>
+            <span className="material-symbols-outlined" data-icon="dataset">dataset</span>
+            <span className="font-medium">DSA Sheets</span>
+          </a>
+          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300 ease-in-out" href="#" onClick={(e) => { e.preventDefault(); navigate('mock_tests'); }}>
+            <span className="material-symbols-outlined" data-icon="timer">timer</span>
+            <span className="font-medium">Mock Tests</span>
           </a>
         </nav>
         <div className="px-6 mt-auto">
@@ -207,14 +203,24 @@ const MyFolders = ({ navigate }) => {
         <div className="p-8 max-w-7xl w-full mx-auto">
           {selectedFolder ? (
             <div className="animate-fade-in-up">
-              <div className="mb-10 flex items-center gap-4">
-                <button onClick={() => setSelectedFolder(null)} className="w-10 h-10 rounded-full bg-surface-container-low hover:bg-surface-container-high transition-colors flex items-center justify-center text-slate-600">
-                  <span className="material-symbols-outlined">arrow_back</span>
-                </button>
-                <div>
-                  <span className="text-[10px] font-bold tracking-[0.15em] text-indigo-600 font-label uppercase">Folder contents</span>
-                  <h2 className="text-4xl font-extrabold text-slate-900 dark:text-slate-50 font-headline mt-1 tracking-tight">{selectedFolder}</h2>
+              <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <button onClick={() => setSelectedFolder(null)} className="w-10 h-10 rounded-full bg-surface-container-low hover:bg-surface-container-high transition-colors flex items-center justify-center text-slate-600">
+                    <span className="material-symbols-outlined">arrow_back</span>
+                  </button>
+                  <div>
+                    <span className="text-[10px] font-bold tracking-[0.15em] text-indigo-600 font-label uppercase">Folder contents</span>
+                    <h2 className="text-4xl font-extrabold text-slate-900 dark:text-slate-50 font-headline mt-1 tracking-tight">{selectedFolder}</h2>
+                  </div>
                 </div>
+
+                <button
+                  onClick={() => navigate('daily_challenge', { mode: 'random', folder: selectedFolder })}
+                  className="signature-gradient text-white px-4 py-2 rounded-xl text-xs font-bold shadow hover:scale-105 transition flex items-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">shuffle</span>
+                  Practice This Folder
+                </button>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -238,6 +244,23 @@ const MyFolders = ({ navigate }) => {
                               <span className="material-symbols-outlined text-[14px]">link</span> Solve
                             </a>
                           )}
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Are you sure you want to delete "${prob.name}"?`)) {
+                                try {
+                                  await api.deleteProblem(prob._id);
+                                  fetchProblems();
+                                } catch (err) {
+                                  alert('Error deleting problem: ' + err.message);
+                                }
+                              }
+                            }}
+                            className="ml-auto text-xs text-red-500 hover:text-red-700 font-semibold flex items-center gap-0.5"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">delete</span> Delete
+                          </button>
                         </div>
                         {prob.notes && (
                            <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 flex-1">
@@ -336,16 +359,47 @@ const MyFolders = ({ navigate }) => {
                     </div>
                   </div>
                 </div>
-                <div className="relative w-full md:w-80 h-64 rounded-2xl overflow-hidden signature-gradient shadow-2xl shadow-indigo-200">
+                <div 
+                  onClick={() => !dailyChallenge && navigate('add_problem')}
+                  className={`relative w-full md:w-80 h-64 rounded-2xl overflow-hidden signature-gradient shadow-2xl shadow-indigo-200 ${!dailyChallenge ? 'cursor-pointer hover:brightness-105 transition' : ''}`}
+                >
                   <img className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-30" alt="Abstract cyber circuit pattern blue gradient" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnv0iGn_Jtoh_AnmJhqAix5L_Sufxabm5JExuOONXfs1RwlkY8tcduvIT5Pcr1eKNDg69Ijmz80Hnu3M0Lfd5bcyOO3HJVC8EfKTgsM90dJMl1Va0-ChvGHT9G1CH02dz0_C1SqV18PWi-tV5xdxoLIq9XdpRjVnnjdnrvx4PvnOlj4TrbOq6KCTZr0NeBnXq5MqIXMFcsNEw7c9YieBfpJs9xwRdZQ0sIjtmXKxPNZF1_J0Pr_qAhqnHAYZdXkn3_LCFNqVag1ga2" />
                   <div className="absolute inset-0 p-8 flex flex-col justify-end text-white">
                     <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-2">Daily Challenge</p>
-                    <h5 className="text-xl font-bold font-headline leading-tight">{dailyChallenge ? dailyChallenge.name : "Add more problems"}</h5>
+                    <h5 
+                      onClick={(e) => { e.stopPropagation(); if (!dailyChallenge) navigate('add_problem'); }}
+                      className="text-xl font-bold font-headline leading-tight hover:underline cursor-pointer"
+                    >
+                      {dailyChallenge ? dailyChallenge.name : "Add more problems"}
+                    </h5>
                     <div className="mt-4">
-                      {dailyChallenge && dailyChallenge.link ? (
-                        <a href={dailyChallenge.link} target="_blank" rel="noreferrer" className="inline-block bg-white/20 backdrop-blur-md px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/30 transition-colors">Solve Now</a>
+                      {dailyChallenge ? (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => navigate('daily_challenge', { challengeId: dailyChallenge._id, mode: 'random' })}
+                            className="inline-block bg-white text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold shadow hover:bg-slate-100 active:scale-95 transition-all"
+                          >
+                            Solve in Workspace
+                          </button>
+                          {dailyChallenge.link && (
+                            <a
+                              href={dailyChallenge.link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-block bg-white/20 backdrop-blur-md px-3 py-2 rounded-lg text-sm font-semibold hover:bg-white/30 transition-colors"
+                              title="Solve on Platform"
+                            >
+                              <span className="material-symbols-outlined text-sm">open_in_new</span>
+                            </a>
+                          )}
+                        </div>
                       ) : (
-                        <button className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-lg text-sm font-semibold opacity-50 cursor-not-allowed">Solve Now</button>
+                        <button
+                          onClick={() => navigate('add_problem')}
+                          className="inline-block bg-white text-indigo-700 hover:bg-slate-100 px-4 py-2 rounded-lg text-sm font-bold shadow active:scale-95 transition-all cursor-pointer"
+                        >
+                          + Add Problem Now
+                        </button>
                       )}
                     </div>
                   </div>
