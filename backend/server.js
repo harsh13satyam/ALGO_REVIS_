@@ -48,6 +48,14 @@ app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Ensure database connection in both standalone and serverless environments
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    await connectDB();
+  }
+  next();
+});
+
 // Mount API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
@@ -124,4 +132,7 @@ if (require.main === module) {
   startServer();
 }
 
-module.exports = { app, server, startServer };
+module.exports = app;
+module.exports.app = app;
+module.exports.server = server;
+module.exports.startServer = startServer;

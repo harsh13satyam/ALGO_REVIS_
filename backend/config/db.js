@@ -11,6 +11,9 @@ try {
 let isConnected = false;
 
 const connectDB = async () => {
+  if (mongoose.connection.readyState >= 1) {
+    return true;
+  }
   const uri = process.env.MONGO_URI;
   if (!uri) {
     console.error('⚠️ [Database] MONGO_URI is not defined in environment variables.');
