@@ -63,6 +63,22 @@ app.use('/api/challenges', challengeRoutes);
 app.use('/api/whatsapp/webhook', whatsappWebhookRoutes);
 app.use('/api/health', healthRoutes);
 
+// Root API status endpoint
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: '🚀 AlgoRevis Backend API is active and running!',
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      status: '/api/status',
+      auth: '/api/auth',
+      problems: '/api/problems',
+      challenges: '/api/challenges'
+    }
+  });
+});
+
 // Legacy hit check route
 app.get('/api/status', (req, res) => {
   res.json({
