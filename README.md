@@ -80,6 +80,7 @@ Now we will turn on the visual part of the website!
 
 ## 👨‍💻 Author / Credits
 **AlgoRevis** was proudly created and developed entirely by **Harsh and Arpita**
- ([@harsh13satyam](https://github.com/harsh13satyam)). 
+
+([@harsh13satyam](https://github.com/harsh13satyam)). 
 
 *If you found this project helpful or use it yourself, feel free to give it a ⭐ on GitHub!*
