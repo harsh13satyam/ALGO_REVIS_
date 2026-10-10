@@ -19,29 +19,12 @@ const healthRoutes = require('./routes/health');
 const app = express();
 const server = http.createServer(app);
 
-// CORS configuration for local development and production
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  process.env.CLIENT_URL
-].filter(Boolean);
-
+// CORS configuration permitting credentials from production frontend and local dev
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, postman)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.some(allowed => origin === allowed || allowed === '*')) {
-      return callback(null, true);
-    }
-    // In development, permit localhost on any port
-    if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:')) {
-      return callback(null, true);
-    }
-    callback(null, true); // Fallback permissive for development
-  },
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With']
 }));
 
 app.use(cookieParser());
