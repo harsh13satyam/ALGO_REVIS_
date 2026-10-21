@@ -1,14 +1,35 @@
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 let twilioClient = null;
 
-try {
-  const twilio = require('twilio');
-  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-    twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+let gmailTransporter = null;
+
+const getGmailTransporter = () => {
+  const user = process.env.EMAIL_USER || process.env.GMAIL_USER;
+  const pass = process.env.EMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
+
+  if (
+    !user ||
+    !pass ||
+    user.includes('your_gmail_address') ||
+    pass.includes('your_16_char_app_password') ||
+    pass.includes('your_app_password')
+  ) {
+    return null;
   }
-} catch (e) {
-  console.warn('Twilio library not loaded:', e.message);
-}
+
+  if (!gmailTransporter) {
+    gmailTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: user.trim(),
+        // Automatically strip whitespace if user copies 16-char app password with spaces (e.g. 'abcd efgh ijkl mnop')
+        pass: pass.trim().replace(/\s+/g, '')
+      }
+    });
+  }
+  return gmailTransporter;
+};
 
 /**
  * Returns a cryptographically secure 6-digit numeric OTP
@@ -38,73 +59,115 @@ const verifyOTPHash = (candidateOTP, storedHash) => {
 };
 
 /**
- * Sends a real verification email via Resend API
+ * Sends a real verification email via Nodemailer (Gmail SMTP) or Resend fallback
  */
 const sendRealEmailOTP = async (email, otp) => {
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || 'AlgoRevis <onboarding@resend.dev>';
+  const htmlContent = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: auto; padding: 32px 24px; border: 1px solid #e2e8f0; border-radius: 16px; background: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      <div style="text-align: center; margin-bottom: 28px;">
+        <div style="display: inline-block; padding: 12px; background: #eef2ff; border-radius: 12px; margin-bottom: 12px;">
+          <span style="font-size: 28px;">⚡</span>
+        </div>
+        <h2 style="color: #3730a3; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">AlgoRevis</h2>
+        <p style="color: #64748b; font-size: 14px; margin-top: 4px; font-weight: 500;">Account Verification</p>
+      </div>
+      <p style="color: #1e293b; font-size: 15px; line-height: 1.5;">Welcome to AlgoRevis! Use the verification code below to verify your email address:</p>
+      <div style="background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%); padding: 22px; border-radius: 12px; text-align: center; margin: 24px 0; border: 1px dashed #c7d2fe;">
+        <span style="font-size: 36px; font-weight: 800; letter-spacing: 8px; color: #312e81; font-family: 'Courier New', Courier, monospace;">${otp}</span>
+      </div>
+      <p style="color: #64748b; font-size: 13px; line-height: 1.5;">This code will expire in <strong style="color: #334155;">10 minutes</strong>. Never share this code with anyone.</p>
+      <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 28px 0;" />
+      <p style="color: #94a3b8; font-size: 12px; text-align: center; line-height: 1.4;">If you did not request this verification code, you can safely ignore this email.</p>
+    </div>
+  `;
 
-  if (!apiKey || apiKey.startsWith('re_your_')) {
-    return {
-      success: false,
-      configured: false,
-      error: 'RESEND_API_KEY is not configured in backend/.env. Please configure your Resend API Key.'
-    };
-  }
+  // 1. Primary: Nodemailer with Gmail SMTP
+  const transporter = getGmailTransporter();
+  if (transporter) {
+    try {
+      const emailUser = process.env.EMAIL_USER || process.env.GMAIL_USER;
+      const fromAddress = process.env.EMAIL_FROM || `AlgoRevis <${emailUser.trim()}>`;
 
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [email],
+      const info = await transporter.sendMail({
+        from: fromAddress,
+        to: email,
         subject: `Your AlgoRevis Verification Code: ${otp}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
-            <div style="text-align: center; margin-bottom: 24px;">
-              <h2 style="color: #4338ca; margin: 0;">AlgoRevis</h2>
-              <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Account Verification</p>
-            </div>
-            <p style="color: #1e293b; font-size: 15px;">Use the following code to verify your email address:</p>
-            <div style="background: #f1f5f9; padding: 18px; border-radius: 8px; text-align: center; margin: 24px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 6px; color: #1e1b4b; font-family: monospace;">${otp}</span>
-            </div>
-            <p style="color: #64748b; font-size: 13px;">This code will expire in <strong>10 minutes</strong>. Never share this code with anyone.</p>
-            <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 24px 0;" />
-            <p style="color: #94a3b8; font-size: 11px; text-align: center;">If you did not request this code, you can safely ignore this email.</p>
-          </div>
-        `
-      })
-    });
+        html: htmlContent
+      });
 
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      const errMsg = data.message || `Resend HTTP error ${res.status}: ${res.statusText}`;
+      console.log(`[AlgoRevis Nodemailer] Email OTP successfully sent to ${email} (MessageID: ${info.messageId})`);
+      return {
+        success: true,
+        configured: true,
+        provider: 'gmail_smtp',
+        providerId: info.messageId,
+        status: 'delivered'
+      };
+    } catch (smtpErr) {
+      console.error('[AlgoRevis Nodemailer] SMTP Error sending email:', smtpErr.message);
       return {
         success: false,
         configured: true,
-        error: errMsg
+        error: `Gmail SMTP Error: ${smtpErr.message}. Ensure your 16-character Google App Password is correct.`
       };
     }
-
-    return {
-      success: true,
-      configured: true,
-      providerId: data.id,
-      status: 'delivered_to_provider'
-    };
-  } catch (err) {
-    return {
-      success: false,
-      configured: true,
-      error: `Network failure contacting Resend: ${err.message}`
-    };
   }
+
+  // 2. Fallback: Resend API (if configured with custom verified domain)
+  const resendApiKey = process.env.RESEND_API_KEY;
+  if (resendApiKey && !resendApiKey.startsWith('re_your_')) {
+    const fromEmail = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || 'AlgoRevis <onboarding@resend.dev>';
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [email],
+          subject: `Your AlgoRevis Verification Code: ${otp}`,
+          html: htmlContent
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const errMsg = data.message || `Resend error: ${res.statusText}`;
+        console.warn('[AlgoRevis Resend] Warning:', errMsg);
+        // Notice: If Resend fails because of unverified domain, log fallback
+        console.log(`\n======================================================\n[AlgoRevis OTP Fallback] Verification code for ${email}: ${otp}\n(Add EMAIL_USER & EMAIL_PASS to backend/.env to send via Gmail to any email!)\n======================================================\n`);
+        return {
+          success: true,
+          configured: false,
+          devFallback: true,
+          error: errMsg,
+          provider: 'resend_sandbox_restricted'
+        };
+      }
+
+      return {
+        success: true,
+        configured: true,
+        provider: 'resend',
+        providerId: data.id,
+        status: 'delivered_to_provider'
+      };
+    } catch (resendErr) {
+      console.error('[AlgoRevis Resend] Request failed:', resendErr.message);
+    }
+  }
+
+  // 3. Fallback for Local Dev / Testing before entering credentials
+  console.log(`\n======================================================\n[AlgoRevis OTP Dev] Verification code for ${email}: ${otp}\n(Set EMAIL_USER and EMAIL_PASS in backend/.env for real Gmail delivery)\n======================================================\n`);
+  return {
+    success: true,
+    configured: false,
+    devMode: true,
+    message: 'OTP generated. Check server console or configure EMAIL_USER and EMAIL_PASS in backend/.env'
+  };
 };
 
 /**

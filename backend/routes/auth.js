@@ -19,20 +19,24 @@ const authLimiter = rateLimiter({ windowMs: 60 * 1000, max: 20 });
 const otpLimiter = rateLimiter({ windowMs: 5 * 60 * 1000, max: 10, message: 'Too many OTP requests. Please wait a few minutes.' });
 
 /**
- * Activates a pending registration once both email and phone are verified
+ * Activates a pending registration once email is verified (and phone if provided)
  */
 const activatePendingRegistration = async (pending, res) => {
-  const newUser = new User({
+  const userPayload = {
     name: pending.name,
     email: pending.email,
-    phone: pending.phone,
     password: pending.passwordHash,
     isEmailVerified: true,
-    isPhoneVerified: true,
+    isPhoneVerified: Boolean(pending.isPhoneVerified && pending.phone),
     emailConsent: true,
-    whatsappConsent: true
-  });
+    whatsappConsent: false
+  };
 
+  if (pending.phone) {
+    userPayload.phone = pending.phone;
+  }
+
+  const newUser = new User(userPayload);
   await newUser.save();
   await PendingRegistration.deleteOne({ _id: pending._id });
 
@@ -47,8 +51,9 @@ const activatePendingRegistration = async (pending, res) => {
 
 /**
  * POST /api/auth/register-initiate
- * Validates fields, generates cryptographically secure OTPs, dispatches
- * real email (Resend) and real SMS (Twilio), and stages PendingRegistration.
+ * Validates fields, generates secure email OTP, dispatches real email
+ * via Nodemailer (Gmail SMTP), and stages PendingRegistration.
+ * Phone is completely optional.
  */
 router.post('/register-initiate', authLimiter, async (req, res) => {
   try {
@@ -60,56 +65,65 @@ router.post('/register-initiate', authLimiter, async (req, res) => {
     if (!email || typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email)) {
       return res.status(400).json({ message: 'Please provide a valid email address' });
     }
-    if (!phone || typeof phone !== 'string' || !/^\+[1-9]\d{7,14}$/.test(phone.trim())) {
-      return res.status(400).json({ message: 'Phone number must include country code in E.164 format (e.g. +919876543210 or +12025550123)' });
-    }
     if (!password || typeof password !== 'string' || password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters long' });
     }
-    if (confirmPassword !== undefined && password !== confirmPassword) {
+    if (confirmPassword !== undefined && confirmPassword !== '' && password !== confirmPassword) {
       return res.status(400).json({ message: 'Passwords do not match' });
     }
 
     email = email.trim().toLowerCase();
     name = name.trim();
-    phone = phone.trim();
+    const cleanPhone = phone && typeof phone === 'string' && phone.trim() ? phone.trim() : null;
+
+    if (cleanPhone && !/^\+[1-9]\d{7,14}$/.test(cleanPhone)) {
+      return res.status(400).json({ message: 'Phone number must include country code in E.164 format (e.g. +919876543210 or +12025550123)' });
+    }
 
     // 1. Check for existing active accounts
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
-      return res.status(400).json({ message: 'An active account with this email address already exists' });
+      return res.status(400).json({ message: 'An active account with this email address already exists. Please login instead.' });
     }
 
-    const existingPhone = await User.findOne({ phone });
-    if (existingPhone) {
-      return res.status(400).json({ message: 'An active account with this phone number already exists' });
+    if (cleanPhone) {
+      const existingPhone = await User.findOne({ phone: cleanPhone });
+      if (existingPhone) {
+        return res.status(400).json({ message: 'An active account with this phone number already exists' });
+      }
     }
 
     // 2. Hash password securely
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // 3. Generate independent secure OTPs
+    // 3. Generate independent secure OTP
     const emailOtp = generateSecureOTP();
-    const phoneOtp = generateSecureOTP();
 
-    // 4. Send real Email OTP via Resend
+    // 4. Send real Email OTP via Nodemailer / Gmail SMTP
     const emailResult = await sendRealEmailOTP(email, emailOtp);
 
-    // 5. Send real SMS OTP via Twilio
-    const phoneResult = await sendRealPhoneOTP(phone, phoneOtp);
+    // 5. Send real SMS OTP only if phone is provided
+    let phoneResult = { success: false, configured: false };
+    let phoneOtp = null;
+    if (cleanPhone) {
+      phoneOtp = generateSecureOTP();
+      phoneResult = await sendRealPhoneOTP(cleanPhone, phoneOtp);
+    }
 
     // 6. Stage PendingRegistration in database
     const registrationToken = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    await PendingRegistration.deleteMany({ $or: [{ email }, { phone }] });
+    const deleteFilter = [{ email }];
+    if (cleanPhone) deleteFilter.push({ phone: cleanPhone });
+    await PendingRegistration.deleteMany({ $or: deleteFilter });
 
     const pending = new PendingRegistration({
       registrationToken,
       name,
       email,
-      phone,
+      phone: cleanPhone || null,
       passwordHash,
       emailOtpHash: hashOTP(emailOtp),
       emailOtpExpires: expires,
@@ -117,31 +131,26 @@ router.post('/register-initiate', authLimiter, async (req, res) => {
       emailOtpLastSentAt: new Date(),
       isEmailVerified: false,
       phoneVerificationSid: phoneResult.sid || null,
-      phoneOtpHash: hashOTP(phoneOtp),
-      phoneOtpExpires: expires,
+      phoneOtpHash: phoneOtp ? hashOTP(phoneOtp) : null,
+      phoneOtpExpires: cleanPhone ? expires : null,
       phoneOtpAttempts: 0,
-      phoneOtpLastSentAt: new Date(),
-      isPhoneVerified: false
+      phoneOtpLastSentAt: cleanPhone ? new Date() : null,
+      isPhoneVerified: !cleanPhone
     });
 
     await pending.save();
 
     res.status(200).json({
-      message: 'Verification codes dispatched.',
+      message: 'Verification code sent to your email address.',
       registrationToken,
+      email,
       emailStatus: {
         sent: emailResult.success,
         configured: emailResult.configured,
         error: emailResult.error || null,
         recipient: email
       },
-      phoneStatus: {
-        sent: phoneResult.success,
-        configured: phoneResult.configured,
-        error: phoneResult.error || null,
-        provider: phoneResult.provider || null,
-        recipient: phone
-      },
+      phoneRequired: Boolean(cleanPhone),
       cooldownSeconds: 60
     });
   } catch (error) {
@@ -152,7 +161,7 @@ router.post('/register-initiate', authLimiter, async (req, res) => {
 
 /**
  * POST /api/auth/verify-email-code
- * Validates submitted email OTP. Activates user if phone is already verified.
+ * Validates submitted email OTP. Activates user immediately in email-only mode!
  */
 router.post('/verify-email-code', otpLimiter, async (req, res) => {
   try {
@@ -171,7 +180,7 @@ router.post('/verify-email-code', otpLimiter, async (req, res) => {
         verified: true,
         isEmailVerified: true,
         isPhoneVerified: pending.isPhoneVerified,
-        accountActivated: false,
+        accountActivated: true,
         message: 'Email address is already verified'
       });
     }
@@ -196,16 +205,17 @@ router.post('/verify-email-code', otpLimiter, async (req, res) => {
     pending.emailOtpHash = null; // Invalidate single use
     await pending.save();
 
-    // Check if both channels are verified -> Activate Account!
-    if (pending.isPhoneVerified) {
+    // Check if phone is not required OR phone is already verified -> Activate Account!
+    if (pending.isPhoneVerified || !pending.phone) {
       const { user, token } = await activatePendingRegistration(pending, res);
       return res.status(200).json({
         verified: true,
         isEmailVerified: true,
-        isPhoneVerified: true,
+        isPhoneVerified: Boolean(pending.phone && pending.isPhoneVerified),
         accountActivated: true,
-        message: 'Both channels verified! Account successfully activated.',
+        message: 'Email verified successfully! Welcome to AlgoRevis.',
         user: user.toSafeObject(),
+        name: user.name,
         token
       });
     }

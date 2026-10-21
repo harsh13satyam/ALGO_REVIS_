@@ -21,9 +21,9 @@ const PendingRegistrationSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: true,
+    required: false,
     trim: true,
-    index: true
+    default: null
   },
   passwordHash: {
     type: String,
