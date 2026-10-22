@@ -18,6 +18,7 @@ router.get('/', (req, res) => {
       email: (!!process.env.BREVO_API_KEY && !process.env.BREVO_API_KEY.startsWith('xkeysib-your_')) ||
              (!!process.env.EMAIL_USER && !process.env.EMAIL_USER.includes('your_gmail')) ||
              (!!process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.startsWith('re_your_')),
+      emailProvider: (process.env.BREVO_API_KEY && !process.env.BREVO_API_KEY.startsWith('xkeysib-your_')) ? 'brevo_https' : (process.env.EMAIL_USER ? 'gmail_smtp' : 'mock'),
       whatsapp: !!process.env.WHATSAPP_PHONE_NUMBER_ID && !process.env.WHATSAPP_PHONE_NUMBER_ID.startsWith('your_')
     }
   });
