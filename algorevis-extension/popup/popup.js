@@ -3,7 +3,7 @@
  */
 
 // Configuration constants
-const DEFAULT_API_BASE = 'https://algorevis-app.onrender.com';
+const DEFAULT_API_BASE = 'https://algorevis-backend.onrender.com';
 const LOCAL_API_BASE = 'http://localhost:5000';
 
 // State management

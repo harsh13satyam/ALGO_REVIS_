@@ -2,7 +2,7 @@
  * AlgoRevis Chrome Extension - Background Service Worker (Manifest V3)
  */
 
-const DEFAULT_API_BASE = 'https://algorevis-app.onrender.com';
+const DEFAULT_API_BASE = 'https://algorevis-backend.onrender.com';
 
 // Set default configuration on installation
 chrome.runtime.onInstalled.addListener(async (details) => {
