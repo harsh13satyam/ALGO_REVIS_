@@ -95,7 +95,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function loadStoredConfig() {
   return new Promise((resolve) => {
     chrome.storage.local.get(['apiBaseUrl', 'authToken', 'currentUser'], (res) => {
-      state.apiBaseUrl = res.apiBaseUrl || DEFAULT_API_BASE;
+      let base = res.apiBaseUrl || DEFAULT_API_BASE;
+      if (base === 'https://algorevis-app.onrender.com' || base.includes('algorevis-app.onrender.com')) {
+        base = DEFAULT_API_BASE;
+        chrome.storage.local.set({ apiBaseUrl: DEFAULT_API_BASE });
+      }
+      state.apiBaseUrl = base;
       state.authToken = res.authToken || null;
       state.currentUser = res.currentUser || null;
 
@@ -572,13 +577,13 @@ function setupEventListeners() {
   // Open web library
   elements.openWebLibraryLink.addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: `${state.apiBaseUrl.replace(/\/+$/, '')}` });
+    chrome.tabs.create({ url: 'https://algorevis-app.onrender.com' });
   });
 
   // Open signup link
   elements.openSignupLink.addEventListener('click', (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: `${state.apiBaseUrl.replace(/\/+$/, '')}` });
+    chrome.tabs.create({ url: 'https://algorevis-app.onrender.com' });
   });
 
   // Reset form

@@ -8,7 +8,7 @@ const DEFAULT_API_BASE = 'https://algorevis-backend.onrender.com';
 chrome.runtime.onInstalled.addListener(async (details) => {
   console.log('[AlgoRevis Extension] Installed/Updated:', details.reason);
   const data = await chrome.storage.local.get(['apiBaseUrl']);
-  if (!data.apiBaseUrl) {
+  if (!data.apiBaseUrl || data.apiBaseUrl.includes('algorevis-app.onrender.com')) {
     await chrome.storage.local.set({ apiBaseUrl: DEFAULT_API_BASE });
   }
 });
