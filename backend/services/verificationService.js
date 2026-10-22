@@ -85,20 +85,23 @@ const sendRealEmailOTP = async (email, otp) => {
   `;
 
   // 1. Primary for Cloud: Brevo HTTPS REST API (Port 443 - never blocked by Render, sends to ANY email)
-  const brevoApiKey = process.env.BREVO_API_KEY;
-  if (brevoApiKey && !brevoApiKey.startsWith('xkeysib-your_')) {
-    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER || 'harshsatyamsingh@gmail.com';
+  const rawBrevoKey = process.env.BREVO_API_KEY || '';
+  const brevoApiKey = rawBrevoKey.trim().replace(/^["']|["']$/g, '');
+  if (brevoApiKey && !brevoApiKey.startsWith('xkeysib-your_') && brevoApiKey.length > 20) {
+    const rawSender = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER || 'harshsatyamsingh@gmail.com';
+    const senderEmail = rawSender.trim().replace(/^["']|["']$/g, '');
     const senderName = process.env.BREVO_SENDER_NAME || 'AlgoRevis';
     try {
+      console.log(`[AlgoRevis Brevo] Dispatching OTP email to ${email.trim()} via Brevo HTTPS API (Sender: ${senderEmail})...`);
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: {
           'accept': 'application/json',
-          'api-key': brevoApiKey.trim(),
+          'api-key': brevoApiKey,
           'content-type': 'application/json'
         },
         body: JSON.stringify({
-          sender: { name: senderName, email: senderEmail.trim() },
+          sender: { name: senderName, email: senderEmail },
           to: [{ email: email.trim() }],
           subject: `Your AlgoRevis Verification Code: ${otp}`,
           htmlContent: htmlContent
@@ -117,10 +120,10 @@ const sendRealEmailOTP = async (email, otp) => {
           status: 'delivered'
         };
       } else {
-        console.warn('[AlgoRevis Brevo] Warning from Brevo API:', data.message || res.statusText);
+        console.error('[AlgoRevis Brevo] Error response from Brevo API:', res.status, JSON.stringify(data));
       }
     } catch (brevoErr) {
-      console.error('[AlgoRevis Brevo] Request failed:', brevoErr.message);
+      console.error('[AlgoRevis Brevo] Request exception:', brevoErr.message);
     }
   }
 
