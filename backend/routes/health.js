@@ -15,7 +15,9 @@ router.get('/', (req, res) => {
     services: {
       scheduler: 'active',
       gemini: !!process.env.GEMINI_API_KEY && !process.env.GEMINI_API_KEY.startsWith('your_'),
-      email: !!process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.startsWith('re_your_'),
+      email: (!!process.env.BREVO_API_KEY && !process.env.BREVO_API_KEY.startsWith('xkeysib-your_')) ||
+             (!!process.env.EMAIL_USER && !process.env.EMAIL_USER.includes('your_gmail')) ||
+             (!!process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.startsWith('re_your_')),
       whatsapp: !!process.env.WHATSAPP_PHONE_NUMBER_ID && !process.env.WHATSAPP_PHONE_NUMBER_ID.startsWith('your_')
     }
   });

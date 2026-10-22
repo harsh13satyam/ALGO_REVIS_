@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Problem = require('../models/Problem');
 const { requireAuth } = require('../middleware/auth');
 
@@ -21,6 +22,51 @@ const getNextLocalCalendarDay = (timezone = 'UTC') => {
   }
 };
 
+// GET /api/problems/check - Check if problem is already saved by this user
+router.get('/check', async (req, res) => {
+  try {
+    const { url, link, problemId, platform } = req.query;
+    const targetUrl = (url || link || '').trim();
+    const targetId = (problemId || '').trim();
+    const targetPlatform = (platform || '').trim();
+
+    let existing = null;
+    if (targetUrl) {
+      const cleanUrl = targetUrl.replace(/\/+$/, '');
+      existing = await Problem.findOne({
+        user: req.user._id,
+        $or: [
+          { link: targetUrl },
+          { link: cleanUrl },
+          { link: `${cleanUrl}/` }
+        ]
+      });
+    }
+
+    if (!existing && targetId && targetPlatform) {
+      existing = await Problem.findOne({
+        user: req.user._id,
+        platform: targetPlatform,
+        problemId: targetId
+      });
+    }
+
+    if (existing) {
+      return res.status(200).json({
+        exists: true,
+        problem: existing
+      });
+    }
+
+    return res.status(200).json({
+      exists: false,
+      problem: null
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error checking problem existence' });
+  }
+});
+
 // POST /api/problems - Create a new problem with automated revision scheduling
 router.post('/', async (req, res) => {
   try {
@@ -34,27 +80,51 @@ router.post('/', async (req, res) => {
       topic,
       difficulty,
       notes,
-      imageBase64
+      imageBase64,
+      platform,
+      problemId,
+      language,
+      code,
+      approach,
+      intuition,
+      timeComplexity,
+      spaceComplexity,
+      updateIfDuplicate
     } = req.body;
 
     const problemName = (name || title || '').trim();
-    const problemPattern = (pattern || topic || '').trim();
+    const problemPattern = (pattern || topic || approach || 'General').trim();
     const problemLink = (link || url || '').trim();
+    const problemPlatform = (platform || '').trim();
+    const cleanProblemId = (problemId || '').trim();
 
-    if (!problemName || !problemPattern) {
-      return res.status(400).json({ message: 'Problem title and topic/pattern are required' });
+    if (!problemName) {
+      return res.status(400).json({ message: 'Problem title/name is required' });
     }
 
-    // Duplicate prevention:
-    // If a URL link is provided, only reject if the exact same link has already been saved by this user.
-    // If no link is provided, reject if the exact same name already exists in the same folder.
+    // Duplicate detection:
     let existing = null;
     if (problemLink) {
+      const cleanUrl = problemLink.replace(/\/+$/, '');
       existing = await Problem.findOne({
         user: req.user._id,
-        link: problemLink
+        $or: [
+          { link: problemLink },
+          { link: cleanUrl },
+          { link: `${cleanUrl}/` }
+        ]
       });
-    } else {
+    }
+
+    if (!existing && cleanProblemId && problemPlatform) {
+      existing = await Problem.findOne({
+        user: req.user._id,
+        platform: problemPlatform,
+        problemId: cleanProblemId
+      });
+    }
+
+    if (!existing && !problemLink) {
       existing = await Problem.findOne({
         user: req.user._id,
         name: { $regex: new RegExp(`^${problemName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
@@ -63,6 +133,32 @@ router.post('/', async (req, res) => {
     }
 
     if (existing) {
+      if (updateIfDuplicate) {
+        existing.name = problemName;
+        if (problemLink) existing.link = problemLink;
+        if (problemPattern) existing.pattern = problemPattern;
+        if (difficulty && ['Easy', 'Medium', 'Hard'].includes(difficulty)) existing.difficulty = difficulty;
+        if (description !== undefined) existing.description = description;
+        if (notes !== undefined) existing.notes = notes;
+        if (imageBase64 !== undefined) existing.imageBase64 = imageBase64;
+        if (problemPlatform) existing.platform = problemPlatform;
+        if (cleanProblemId) existing.problemId = cleanProblemId;
+        if (language !== undefined) existing.language = language;
+        if (code !== undefined) existing.code = code;
+        if (approach !== undefined) existing.approach = approach;
+        if (intuition !== undefined) existing.intuition = intuition;
+        if (timeComplexity !== undefined) existing.timeComplexity = timeComplexity;
+        if (spaceComplexity !== undefined) existing.spaceComplexity = spaceComplexity;
+        existing.updatedAt = new Date();
+
+        await existing.save();
+        return res.status(200).json({
+          message: 'Problem updated successfully!',
+          problem: existing,
+          isUpdate: true
+        });
+      }
+
       return res.status(409).json({
         message: 'This exact problem URL / link is already in your revision library',
         problem: existing
@@ -73,6 +169,20 @@ router.post('/', async (req, res) => {
     const userTz = req.user.deliveryPreferences?.timezone || 'UTC';
     const nextReview = getNextLocalCalendarDay(userTz);
 
+    // Auto-generate rich notes if notes field is empty but intuition/approach/complexity are provided
+    let finalNotes = notes || '';
+    if (!finalNotes) {
+      const parts = [];
+      if (approach) parts.push(`Approach: ${approach}`);
+      if (intuition) parts.push(`Intuition: ${intuition}`);
+      if (timeComplexity || spaceComplexity) {
+        parts.push(`Complexity: Time ${timeComplexity || 'N/A'}, Space ${spaceComplexity || 'N/A'}`);
+      }
+      if (parts.length > 0) {
+        finalNotes = parts.join('\n\n');
+      }
+    }
+
     const newProblem = new Problem({
       user: req.user._id,
       userName: req.user.name,
@@ -81,8 +191,16 @@ router.post('/', async (req, res) => {
       description: description || '',
       pattern: problemPattern,
       difficulty: ['Easy', 'Medium', 'Hard'].includes(difficulty) ? difficulty : 'Medium',
-      notes: notes || '',
+      notes: finalNotes,
       imageBase64: imageBase64 || '',
+      platform: problemPlatform,
+      problemId: cleanProblemId,
+      language: language || '',
+      code: code || '',
+      approach: approach || '',
+      intuition: intuition || '',
+      timeComplexity: timeComplexity || '',
+      spaceComplexity: spaceComplexity || '',
       nextReviewAt: nextReview,
       lastRevisedAt: null,
       reviewCount: 0,
@@ -129,9 +247,16 @@ router.get('/queue/due', async (req, res) => {
   }
 });
 
-// GET /api/problems/:identifier - Backward compatibility for username route
+// GET /api/problems/:identifier - Single problem or backward compatibility for username route
 router.get('/:identifier', async (req, res) => {
   try {
+    const { identifier } = req.params;
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      const problem = await Problem.findOne({ _id: identifier, user: req.user._id });
+      if (problem) {
+        return res.status(200).json(problem);
+      }
+    }
     const problems = await Problem.find({ user: req.user._id }).sort({ createdAt: -1 });
     res.status(200).json(problems);
   } catch (error) {
@@ -139,30 +264,65 @@ router.get('/:identifier', async (req, res) => {
   }
 });
 
-// PUT /api/problems/:id - Edit an individual problem
-router.put('/:id', async (req, res) => {
+// Handler for editing an individual problem
+const updateProblemHandler = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, link, description, pattern, difficulty, notes } = req.body;
+    const {
+      name,
+      title,
+      link,
+      url,
+      description,
+      pattern,
+      topic,
+      difficulty,
+      notes,
+      imageBase64,
+      platform,
+      problemId,
+      language,
+      code,
+      approach,
+      intuition,
+      timeComplexity,
+      spaceComplexity
+    } = req.body;
 
     const problem = await Problem.findOne({ _id: id, user: req.user._id });
     if (!problem) {
       return res.status(404).json({ message: 'Problem not found or unauthorized' });
     }
 
-    if (name) problem.name = name.trim();
-    if (link !== undefined) problem.link = link.trim();
+    if (name || title) problem.name = (name || title).trim();
+    if (link !== undefined || url !== undefined) problem.link = (link !== undefined ? link : url).trim();
     if (description !== undefined) problem.description = description;
-    if (pattern) problem.pattern = pattern.trim();
+    if (pattern || topic) problem.pattern = (pattern || topic).trim();
+    else if (approach && !problem.pattern) problem.pattern = approach.trim();
+
     if (difficulty && ['Easy', 'Medium', 'Hard'].includes(difficulty)) problem.difficulty = difficulty;
     if (notes !== undefined) problem.notes = notes;
+    if (imageBase64 !== undefined) problem.imageBase64 = imageBase64;
+    if (platform !== undefined) problem.platform = platform;
+    if (problemId !== undefined) problem.problemId = problemId;
+    if (language !== undefined) problem.language = language;
+    if (code !== undefined) problem.code = code;
+    if (approach !== undefined) problem.approach = approach;
+    if (intuition !== undefined) problem.intuition = intuition;
+    if (timeComplexity !== undefined) problem.timeComplexity = timeComplexity;
+    if (spaceComplexity !== undefined) problem.spaceComplexity = spaceComplexity;
+    problem.updatedAt = new Date();
 
     await problem.save();
     res.status(200).json({ message: 'Problem updated successfully', problem });
   } catch (error) {
     res.status(500).json({ message: 'Server error updating problem' });
   }
-});
+};
+
+// PUT & PATCH /api/problems/:id - Edit an individual problem
+router.put('/:id', updateProblemHandler);
+router.patch('/:id', updateProblemHandler);
 
 // DELETE /api/problems/:id - Delete an individual problem
 router.delete('/:id', async (req, res) => {

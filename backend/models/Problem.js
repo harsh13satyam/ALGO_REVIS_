@@ -77,6 +77,49 @@ const ProblemSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
     index: true
+  },
+  // Extension & solution fields
+  platform: {
+    type: String,
+    enum: ['LeetCode', 'GeeksforGeeks', 'Codeforces', 'Other', ''],
+    default: ''
+  },
+  problemId: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  language: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  code: {
+    type: String,
+    default: ''
+  },
+  approach: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  intuition: {
+    type: String,
+    default: ''
+  },
+  timeComplexity: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  spaceComplexity: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 });
 
@@ -84,5 +127,7 @@ const ProblemSchema = new mongoose.Schema({
 ProblemSchema.index({ user: 1, pattern: 1 });
 ProblemSchema.index({ user: 1, nextReviewAt: 1 });
 ProblemSchema.index({ user: 1, name: 1 });
+ProblemSchema.index({ user: 1, link: 1 });
+ProblemSchema.index({ user: 1, platform: 1, problemId: 1 });
 
 module.exports = mongoose.model('Problem', ProblemSchema);

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AlgoRevis Companion</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="dark-theme">
+  <!-- Extension Container -->
+  <div class="app-container">
+    
+    <!-- Top Header -->
+    <header class="header">
+      <div class="brand">
+        <img src="../icons/icon32.png" alt="AlgoRevis Logo" class="brand-logo" id="headerLogo">
+        <div class="brand-text">
+          <span class="brand-name">AlgoRevis</span>
+          <div class="connection-status" id="connectionStatus">
+            <span class="status-dot connected"></span>
+            <span class="status-label" id="statusLabel">Connected</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="header-actions">
+        <!-- Settings Toggle (for dev API URL switch) -->
+        <button type="button" class="icon-btn" id="settingsToggleBtn" title="Backend Settings">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+
+        <!-- User Chip / Auth Status -->
+        <div class="user-chip hidden" id="userChip">
+          <span class="user-avatar" id="userAvatar">U</span>
+          <span class="user-name" id="userName">User</span>
+          <button type="button" class="btn-logout" id="logoutBtn" title="Logout">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Settings Drawer (Collapsible) -->
+    <div class="settings-drawer hidden" id="settingsDrawer">
+      <div class="settings-drawer-header">
+        <span>Backend Configuration</span>
+        <button type="button" class="icon-close" id="closeSettingsBtn">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="apiBaseInput">API Server URL</label>
+        <div class="preset-buttons">
+          <button type="button" class="btn-preset active" id="btnPresetProd">Render (Cloud)</button>
+          <button type="button" class="btn-preset" id="btnPresetLocal">Localhost (5000)</button>
+        </div>
+        <input type="text" id="apiBaseInput" class="input-field" placeholder="https://algorevis-app.onrender.com">
+      </div>
+      <button type="button" class="btn-save-settings" id="saveSettingsBtn">Apply API URL</button>
+    </div>
+
+    <!-- Main Content Views -->
+    <main class="main-content">
+      
+      <!-- VIEW 1: AUTHENTICATION (When logged out) -->
+      <section class="view-auth" id="viewAuth">
+        <div class="auth-card">
+          <div class="auth-icon-wrap">
+            <img src="../icons/icon48.png" alt="AlgoRevis" width="40" height="40">
+          </div>
+          <h2 class="auth-title">Sign in to AlgoRevis</h2>
+          <p class="auth-subtitle">Connect your account to save problems & solutions directly from coding platforms.</p>
+          
+          <form id="loginForm" class="auth-form">
+            <div class="form-group">
+              <label for="loginEmail">Email Address</label>
+              <input type="email" id="loginEmail" class="input-field" placeholder="you@example.com" required autocomplete="email">
+            </div>
+            
+            <div class="form-group">
+              <label for="loginPassword">Password</label>
+              <input type="password" id="loginPassword" class="input-field" placeholder="••••••••" required autocomplete="current-password">
+            </div>
+            
+            <div class="form-error hidden" id="authError"></div>
+            
+            <button type="submit" class="btn-primary" id="loginSubmitBtn">
+              <span class="btn-text">Sign In</span>
+              <span class="spinner hidden" id="loginSpinner"></span>
+            </button>
+          </form>
+          
+          <div class="auth-footer">
+            <span>New to AlgoRevis?</span>
+            <a href="#" class="link-external" id="openSignupLink">Create an account &rarr;</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: PROBLEM WORKSPACE (When logged in) -->
+      <section class="view-workspace hidden" id="viewWorkspace">
+        
+        <!-- Platform Detector Banner -->
+        <div class="platform-banner" id="platformBanner">
+          <div class="platform-indicator">
+            <span class="platform-badge" id="platformBadge">Detecting...</span>
+            <span class="platform-msg" id="platformMessage">Analyzing active tab...</span>
+          </div>
+          <button type="button" class="btn-detect-refresh" id="refreshDetectionBtn" title="Re-detect from active tab">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          </button>
+        </div>
+
+        <!-- Duplicate Save Banner (visible when problem already saved) -->
+        <div class="duplicate-alert hidden" id="duplicateAlert">
+          <div class="duplicate-info">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span>Problem already in your library. Saving will update your notes & code.</span>
+          </div>
+        </div>
+
+        <!-- Section 1: Problem Information -->
+        <div class="section-card">
+          <div class="section-header">
+            <span class="section-title">Problem Information</span>
+          </div>
+
+          <div class="form-group">
+            <div class="label-row">
+              <label for="problemTitle">Problem Title <span class="required">*</span></label>
+              <div class="difficulty-group" id="difficultyGroup">
+                <button type="button" class="diff-btn" data-diff="Easy">Easy</button>
+                <button type="button" class="diff-btn active" data-diff="Medium">Medium</button>
+                <button type="button" class="diff-btn" data-diff="Hard">Hard</button>
+              </div>
+            </div>
+            <input type="text" id="problemTitle" class="input-field" placeholder="e.g. Longest Substring Without Repeating Characters">
+          </div>
+
+          <div class="form-group">
+            <div class="label-row">
+              <label for="problemUrl">Problem Canonical URL</label>
+              <a href="#" class="url-open-link hidden" id="openOriginalUrlLink" title="Open problem in browser tab">
+                Open Link
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              </a>
+            </div>
+            <input type="url" id="problemUrl" class="input-field" placeholder="https://leetcode.com/problems/...">
+          </div>
+        </div>
+
+        <!-- Section 2: Solution & Editor Code -->
+        <div class="section-card">
+          <div class="section-header">
+            <div class="title-with-badge">
+              <span class="section-title">Solution Code</span>
+              <span class="code-source-badge auto" id="codeSourceBadge">Auto-Captured</span>
+            </div>
+            
+            <div class="lang-selector-wrap">
+              <select id="codeLanguage" class="select-field">
+                <option value="Python3">Python3</option>
+                <option value="C++">C++</option>
+                <option value="Java">Java</option>
+                <option value="JavaScript">JavaScript</option>
+                <option value="TypeScript">TypeScript</option>
+                <option value="Go">Go</option>
+                <option value="Rust">Rust</option>
+                <option value="C#">C#</option>
+                <option value="C">C</option>
+                <option value="Python">Python</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="code-editor-container">
+            <textarea id="solutionCode" class="code-textarea" placeholder="// Paste or inspect your solution code here...&#10;// Automatic capture runs on supported LeetCode & GFG editor tabs." spellcheck="false"></textarea>
+          </div>
+        </div>
+
+        <!-- Section 3: Learning Notes & Revision Context -->
+        <div class="section-card">
+          <div class="section-header">
+            <span class="section-title">Learning & Revision Notes</span>
+          </div>
+
+          <div class="form-group">
+            <label for="approachSelect">Algorithmic Approach / Pattern</label>
+            <select id="approachSelect" class="select-field w-full">
+              <option value="Two Pointers">Two Pointers</option>
+              <option value="Sliding Window">Sliding Window</option>
+              <option value="Hash Map">Hash Map / Frequency Array</option>
+              <option value="Binary Search">Binary Search</option>
+              <option value="Dynamic Programming">Dynamic Programming (DP)</option>
+              <option value="Graph / BFS / DFS">Graph (BFS / DFS / Dijkstra)</option>
+              <option value="Recursion / Backtracking">Recursion / Backtracking</option>
+              <option value="Greedy">Greedy Algorithm</option>
+              <option value="Brute Force">Brute Force</option>
+              <option value="Stack / Monotonic Stack">Stack / Monotonic Stack</option>
+              <option value="Heap / Priority Queue">Heap / Priority Queue</option>
+              <option value="Tree / BST">Binary Tree / BST</option>
+              <option value="Bit Manipulation">Bit Manipulation</option>
+              <option value="Other">Other Approach</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="problemIntuition">Core Intuition ("Aha!" Moment)</label>
+            <textarea id="problemIntuition" class="input-field notes-textarea" rows="2" placeholder="What key property makes this approach work?"></textarea>
+          </div>
+
+          <div class="grid-2-cols">
+            <div class="form-group">
+              <label for="timeComplexity">Time Complexity</label>
+              <input type="text" id="timeComplexity" class="input-field" placeholder="e.g. O(n log n)">
+              <div class="quick-tags" id="timeQuickTags">
+                <button type="button" class="tag-btn" data-val="O(1)">O(1)</button>
+                <button type="button" class="tag-btn" data-val="O(log n)">O(log n)</button>
+                <button type="button" class="tag-btn" data-val="O(n)">O(n)</button>
+                <button type="button" class="tag-btn" data-val="O(n log n)">O(n log n)</button>
+                <button type="button" class="tag-btn" data-val="O(n²)">O(n²)</button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="spaceComplexity">Space Complexity</label>
+              <input type="text" id="spaceComplexity" class="input-field" placeholder="e.g. O(1)">
+              <div class="quick-tags" id="spaceQuickTags">
+                <button type="button" class="tag-btn" data-val="O(1)">O(1)</button>
+                <button type="button" class="tag-btn" data-val="O(log n)">O(log n)</button>
+                <button type="button" class="tag-btn" data-val="O(n)">O(n)</button>
+                <button type="button" class="tag-btn" data-val="O(k)">O(k)</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="personalNotes">Additional Notes & Edge Cases (Optional)</label>
+            <textarea id="personalNotes" class="input-field notes-textarea" rows="2" placeholder="Empty inputs, overflow edge cases, one-off boundary checks..."></textarea>
+          </div>
+        </div>
+
+        <!-- Global Toast / Feedback Notice -->
+        <div class="toast-banner hidden" id="toastBanner">
+          <span class="toast-icon" id="toastIcon"></span>
+          <span class="toast-message" id="toastMessage"></span>
+        </div>
+
+        <!-- Footer Actions -->
+        <footer class="footer">
+          <div class="footer-primary-row">
+            <button type="button" class="btn-cancel" id="resetBtn">Reset</button>
+            <button type="button" class="btn-save" id="saveProblemBtn">
+              <span class="btn-label" id="saveBtnLabel">Save Problem to AlgoRevis</span>
+              <span class="spinner hidden" id="saveSpinner"></span>
+            </button>
+          </div>
+          
+          <div class="footer-links">
+            <a href="#" class="footer-link" id="openWebLibraryLink">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              View in AlgoRevis
+            </a>
+          </div>
+        </footer>
+
+      </section>
+    </main>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

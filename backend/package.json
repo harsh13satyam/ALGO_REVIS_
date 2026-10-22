@@ -9,7 +9,9 @@
     "test:random": "node tests/randomPracticeIntegrationTests.js",
     "test:verification": "node tests/realVerificationTests.js",
     "test:integration": "node tests/preDeploymentTests.js",
-    "test:routes": "node tests/httpRouteTests.js"
+    "test:routes": "node tests/httpRouteTests.js",
+    "test:extension": "node tests/extensionIntegrationTests.js",
+    "db:clear": "node scripts/clear_database.js"
   },
   "keywords": [],
   "author": "",

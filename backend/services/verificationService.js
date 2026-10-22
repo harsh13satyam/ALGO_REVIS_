@@ -25,7 +25,10 @@ const getGmailTransporter = () => {
         user: user.trim(),
         // Automatically strip whitespace if user copies 16-char app password with spaces (e.g. 'abcd efgh ijkl mnop')
         pass: pass.trim().replace(/\s+/g, '')
-      }
+      },
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 5000
     });
   }
   return gmailTransporter;
@@ -81,7 +84,47 @@ const sendRealEmailOTP = async (email, otp) => {
     </div>
   `;
 
-  // 1. Primary: Nodemailer with Gmail SMTP
+  // 1. Primary for Cloud: Brevo HTTPS REST API (Port 443 - never blocked by Render, sends to ANY email)
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  if (brevoApiKey && !brevoApiKey.startsWith('xkeysib-your_')) {
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER || 'harshsatyamsingh@gmail.com';
+    const senderName = process.env.BREVO_SENDER_NAME || 'AlgoRevis';
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': brevoApiKey.trim(),
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: senderName, email: senderEmail.trim() },
+          to: [{ email: email.trim() }],
+          subject: `Your AlgoRevis Verification Code: ${otp}`,
+          htmlContent: htmlContent
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.messageId) {
+        console.log(`[AlgoRevis Brevo] Email OTP successfully sent to ${email} (MessageID: ${data.messageId})`);
+        return {
+          success: true,
+          configured: true,
+          provider: 'brevo_api',
+          providerId: data.messageId,
+          status: 'delivered'
+        };
+      } else {
+        console.warn('[AlgoRevis Brevo] Warning from Brevo API:', data.message || res.statusText);
+      }
+    } catch (brevoErr) {
+      console.error('[AlgoRevis Brevo] Request failed:', brevoErr.message);
+    }
+  }
+
+  // 2. Nodemailer with Gmail SMTP (fast timeout for cloud hosts)
   const transporter = getGmailTransporter();
   if (transporter) {
     try {
@@ -104,12 +147,8 @@ const sendRealEmailOTP = async (email, otp) => {
         status: 'delivered'
       };
     } catch (smtpErr) {
-      console.error('[AlgoRevis Nodemailer] SMTP Error sending email:', smtpErr.message);
-      return {
-        success: false,
-        configured: true,
-        error: `Gmail SMTP Error: ${smtpErr.message}. Ensure your 16-character Google App Password is correct.`
-      };
+      console.warn('[AlgoRevis Nodemailer] SMTP Error (will attempt Resend API fallback):', smtpErr.message);
+      // Fall through to Resend API fallback below instead of hanging or aborting
     }
   }
 

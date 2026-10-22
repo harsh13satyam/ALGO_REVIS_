@@ -5,6 +5,7 @@ const MyFolders = ({ navigate, user }) => {
   const [problems, setProblems] = useState([]);
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [zoomedImage, setZoomedImage] = useState(null);
+  const [expandedCodeId, setExpandedCodeId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const calculateStreak = (problemsArray) => {
@@ -236,6 +237,23 @@ const MyFolders = ({ navigate, user }) => {
                         </div>
                      )}
                      <div className="p-6 flex-1 flex flex-col">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          {prob.platform && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                              {prob.platform}
+                            </span>
+                          )}
+                          {prob.language && (
+                            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                              {prob.language}
+                            </span>
+                          )}
+                          {prob.approach && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400">
+                              {prob.approach}
+                            </span>
+                          )}
+                        </div>
                         <h3 className="text-xl font-bold text-slate-900 font-headline tracking-tight mb-2 group-hover:text-indigo-600 transition-colors">{prob.name}</h3>
                         <div className="flex items-center gap-3 mb-4">
                           <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${prob.difficulty === 'Easy' ? 'bg-secondary-container text-indigo-700' : prob.difficulty === 'Hard' ? 'bg-error-container text-red-700' : 'bg-tertiary-fixed text-amber-700'}`}>{prob.difficulty}</span>
@@ -243,6 +261,19 @@ const MyFolders = ({ navigate, user }) => {
                             <a href={prob.link} target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 text-xs font-bold flex items-center gap-1 transition-colors">
                               <span className="material-symbols-outlined text-[14px]">link</span> Solve
                             </a>
+                          )}
+                          {prob.code && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setExpandedCodeId(expandedCodeId === prob._id ? null : prob._id);
+                              }}
+                              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">code</span>
+                              {expandedCodeId === prob._id ? 'Hide Code' : 'View Code'}
+                            </button>
                           )}
                           <button
                             type="button"
@@ -262,9 +293,14 @@ const MyFolders = ({ navigate, user }) => {
                             <span className="material-symbols-outlined text-[13px]">delete</span> Delete
                           </button>
                         </div>
+                        {expandedCodeId === prob._id && prob.code && (
+                          <div className="mb-4 bg-slate-950 rounded-lg p-3 overflow-x-auto text-xs font-mono text-emerald-400 border border-slate-800 max-h-56 overflow-y-auto">
+                            <pre>{prob.code}</pre>
+                          </div>
+                        )}
                         {prob.notes && (
                            <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-4 flex-1">
-                             <p className="text-xs text-slate-600 font-body leading-relaxed">{prob.notes}</p>
+                             <p className="text-xs text-slate-600 font-body leading-relaxed whitespace-pre-wrap">{prob.notes}</p>
                            </div>
                         )}
                      </div>
