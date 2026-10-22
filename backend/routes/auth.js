@@ -478,6 +478,10 @@ router.post('/login', authLimiter, async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
+      const pending = await PendingRegistration.findOne({ email });
+      if (pending) {
+        return res.status(400).json({ message: 'Account not verified yet. Please enter the verification code sent to your email to activate it.' });
+      }
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
