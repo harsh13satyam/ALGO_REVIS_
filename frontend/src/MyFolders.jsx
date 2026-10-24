@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
+import ChromeExtensionModal from './ChromeExtensionModal';
 
 const MyFolders = ({ navigate, user }) => {
   const [problems, setProblems] = useState([]);
@@ -7,6 +8,7 @@ const MyFolders = ({ navigate, user }) => {
   const [zoomedImage, setZoomedImage] = useState(null);
   const [expandedCodeId, setExpandedCodeId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showExtensionModal, setShowExtensionModal] = useState(false);
 
   const calculateStreak = (problemsArray) => {
     if (!problemsArray || problemsArray.length === 0) return 0;
@@ -161,6 +163,13 @@ const MyFolders = ({ navigate, user }) => {
             <span className="material-symbols-outlined" data-icon="timer">timer</span>
             <span className="font-medium">Mock Tests</span>
           </a>
+          <button
+            onClick={() => setShowExtensionModal(true)}
+            className="w-full text-left text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all duration-300 ease-in-out cursor-pointer"
+          >
+            <span className="text-amber-500">⚡</span>
+            <span className="font-medium">Chrome Extension</span>
+          </button>
         </nav>
         <div className="px-6 mt-auto">
           <button className="w-full signature-gradient text-white py-3 rounded-xl font-semibold shadow-lg shadow-indigo-200 dark:shadow-none transition-transform active:scale-[0.98]" onClick={() => navigate('add_problem')}>
@@ -525,6 +534,12 @@ const MyFolders = ({ navigate, user }) => {
           <img src={zoomedImage} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl scale-100 animate-fade-in-up" alt="Zoomed view" />
         </div>
       )}
+
+      {/* Chrome Extension Setup Modal */}
+      <ChromeExtensionModal
+        isOpen={showExtensionModal}
+        onClose={() => setShowExtensionModal(false)}
+      />
     </div>
   );
 };

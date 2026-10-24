@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import ChromeExtensionModal from './ChromeExtensionModal';
 
 const LandingPage = ({ navigate }) => {
   // 1. Splash Screen States
   const [showSplash, setShowSplash] = useState(true);
   const [splashFade, setSplashFade] = useState(false);
   const [splashBarFilled, setSplashBarFilled] = useState(false);
+
+  // Chrome Extension Modal State
+  const [showExtensionModal, setShowExtensionModal] = useState(false);
 
   // 2. Mobile Menu State
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -154,6 +158,14 @@ const LandingPage = ({ navigate }) => {
           {/* Actions: Sign In & Start Practicing */}
           <div className="hidden md:flex items-center gap-3">
             <button
+              onClick={() => setShowExtensionModal(true)}
+              className="text-xs font-mono font-bold bg-indigo-950/80 border border-indigo-700/60 hover:border-indigo-400 text-indigo-300 hover:text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm hover:shadow-indigo-500/20 cursor-pointer"
+              title="Install Chrome Extension for LeetCode & GFG"
+            >
+              <span className="text-amber-400">⚡</span>
+              <span>Chrome Extension</span>
+            </button>
+            <button
               onClick={() => navigate('login')}
               className="text-sm font-mono text-slate-300 hover:text-white hover:bg-slate-800/60 px-3.5 py-1.5 rounded-lg border border-transparent hover:border-white/10 transition"
             >
@@ -188,6 +200,12 @@ const LandingPage = ({ navigate }) => {
             <a onClick={() => setMobileMenuOpen(false)} href="#pricing" className="text-slate-300 hover:text-white py-1">Pricing</a>
             <a onClick={() => setMobileMenuOpen(false)} href="#testimonials" className="text-slate-300 hover:text-white py-1">Testimonials</a>
             <div className="flex flex-col gap-2 pt-3 border-t border-white/10">
+              <button
+                onClick={() => { setMobileMenuOpen(false); setShowExtensionModal(true); }}
+                className="w-full text-center py-2 text-indigo-300 font-mono text-sm bg-indigo-950/60 border border-indigo-800 rounded-lg flex items-center justify-center gap-1.5"
+              >
+                <span>⚡ Chrome Extension Setup</span>
+              </button>
               <button
                 onClick={() => { setMobileMenuOpen(false); navigate('login'); }}
                 className="w-full text-center py-2 text-slate-300 font-mono text-sm border border-white/10 rounded-lg hover:bg-slate-800"
@@ -245,11 +263,18 @@ const LandingPage = ({ navigate }) => {
                 <span>Start Practicing Free</span>
                 <span className="material-symbols-outlined text-base">arrow_forward</span>
               </button>
+              <button
+                onClick={() => setShowExtensionModal(true)}
+                className="font-mono text-sm text-indigo-300 bg-indigo-950/60 border border-indigo-700/60 hover:border-indigo-400 px-6 py-3.5 rounded-lg transition-all duration-200 hover:bg-indigo-900/40 flex items-center justify-center gap-2"
+              >
+                <span className="text-amber-400">⚡</span>
+                <span>Chrome Extension</span>
+              </button>
               <a
                 href="#simulator-section"
                 className="font-mono text-sm text-slate-300 bg-slate-900/60 border border-white/10 hover:border-[#00f2fe]/40 px-6 py-3.5 rounded-lg transition-all duration-200 hover:bg-slate-800 flex items-center justify-center gap-2"
               >
-                <span>⚡ Explore Memory Simulator</span>
+                <span>Explore Simulator</span>
               </a>
             </div>
 
@@ -1052,6 +1077,13 @@ const LandingPage = ({ navigate }) => {
           </div>
 
           <div className="flex flex-wrap gap-x-8 gap-y-3 font-mono text-xs text-slate-400">
+            <button
+              onClick={() => setShowExtensionModal(true)}
+              className="text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1 font-semibold"
+            >
+              <span>⚡</span>
+              <span>Chrome Extension</span>
+            </button>
             <a href="#curriculum" className="hover:text-[#00f2fe] transition-colors">Sheets Sync</a>
             <a href="#demo-section" className="hover:text-[#00f2fe] transition-colors">Monaco Sandbox</a>
             <a href="#simulator-section" className="text-[#00f2fe] hover:underline">Memory Engine</a>
@@ -1069,6 +1101,12 @@ const LandingPage = ({ navigate }) => {
           </div>
         </div>
       </footer>
+
+      {/* Chrome Extension Setup Modal */}
+      <ChromeExtensionModal
+        isOpen={showExtensionModal}
+        onClose={() => setShowExtensionModal(false)}
+      />
     </div>
   );
 };

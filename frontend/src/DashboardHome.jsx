@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
+import ChromeExtensionModal from './ChromeExtensionModal';
 
 const DashboardHome = ({ navigate, user }) => {
   const [userName, setUserName] = useState(() => {
@@ -7,6 +8,7 @@ const DashboardHome = ({ navigate, user }) => {
   });
   const [problems, setProblems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showExtensionModal, setShowExtensionModal] = useState(false);
   
   useEffect(() => {
     if (user?.name) {
@@ -112,6 +114,10 @@ const DashboardHome = ({ navigate, user }) => {
             <span className="material-symbols-outlined" data-icon="History_edu">history_edu</span>
             <span className="font-body text-sm font-semibold">Revision Mode</span>
           </a>
+          <a className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); setShowExtensionModal(true); }}>
+            <span className="text-amber-500 font-bold">⚡</span>
+            <span className="font-body text-sm">Chrome Extension</span>
+          </a>
           <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300 mt-auto" href="#">
             <span className="material-symbols-outlined" data-icon="settings">settings</span>
             <span className="font-body text-sm">Settings</span>
@@ -136,6 +142,14 @@ const DashboardHome = ({ navigate, user }) => {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowExtensionModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-bold transition shadow-sm cursor-pointer"
+              title="Download & setup Chrome Extension for LeetCode & GFG"
+            >
+              <span className="text-amber-500">⚡</span>
+              <span>Chrome Extension</span>
+            </button>
             <button className="p-2 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
               <span className="material-symbols-outlined" data-icon="notifications">notifications</span>
             </button>
@@ -268,6 +282,12 @@ const DashboardHome = ({ navigate, user }) => {
         <button className="fixed bottom-8 right-8 w-14 h-14 bg-surface-container-lowest text-primary shadow-2xl rounded-full flex items-center justify-center border border-primary/10 hover:scale-110 active:scale-95 transition-all z-50 backdrop-blur-md bg-opacity-80">
           <span className="material-symbols-outlined" data-icon="help_center">help_center</span>
         </button>
+
+        {/* Chrome Extension Setup Modal */}
+        <ChromeExtensionModal
+          isOpen={showExtensionModal}
+          onClose={() => setShowExtensionModal(false)}
+        />
       </main>
     </div>
   );

@@ -5,6 +5,8 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const mongoose = require('mongoose');
 const { WebSocketServer } = require('ws');
+const fs = require('fs');
+const path = require('path');
 
 const { connectDB } = require('./config/db');
 const { startScheduler, stopScheduler } = require('./services/scheduler');
@@ -45,6 +47,16 @@ app.use('/api/problems', problemRoutes);
 app.use('/api/challenges', challengeRoutes);
 app.use('/api/whatsapp/webhook', whatsappWebhookRoutes);
 app.use('/api/health', healthRoutes);
+
+// Download endpoint for Chrome Extension package
+app.get('/api/extension/download', (req, res) => {
+  const zipPath = path.join(__dirname, 'algorevis-extension.zip');
+  if (fs.existsSync(zipPath)) {
+    res.download(zipPath, 'algorevis-extension.zip');
+  } else {
+    res.status(404).json({ message: 'Extension zip package not found' });
+  }
+});
 
 // Root API status endpoint
 app.get('/', (req, res) => {

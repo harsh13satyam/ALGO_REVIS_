@@ -1,4 +1,6 @@
 *.zip
+!frontend/public/algorevis-extension.zip
+!backend/algorevis-extension.zip
 .env
 .env.*
 node_modules/
