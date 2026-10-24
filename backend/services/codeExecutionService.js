@@ -40,9 +40,85 @@ const executeJavaScript = async (code, input = '', timeoutMs = 2000) => {
     try {
       const context = vm.createContext(sandbox);
 
-      // Wrapper to handle either function solution(...) or stdin/stdout scripts
+      // Wrapper to handle either function solution(...) or stdin/stdout scripts with ListNode and TreeNode support
       const wrappedScript = `
+        function ListNode(val, next) {
+          this.val = (val === undefined ? 0 : val);
+          this.next = (next === undefined ? null : next);
+        }
+
+        function TreeNode(val, left, right) {
+          this.val = (val === undefined ? 0 : val);
+          this.left = (left === undefined ? null : left);
+          this.right = (right === undefined ? null : right);
+        }
+
+        function __arrayToList(arr) {
+          if (!Array.isArray(arr) || arr.length === 0) return null;
+          const dummy = new ListNode(0);
+          let cur = dummy;
+          for (let i = 0; i < arr.length; i++) {
+            cur.next = new ListNode(arr[i]);
+            cur = cur.next;
+          }
+          return dummy.next;
+        }
+
+        function __listToArray(head) {
+          const res = [];
+          const visited = new Set();
+          let cur = head;
+          while (cur && !visited.has(cur)) {
+            visited.add(cur);
+            res.push(cur.val !== undefined ? cur.val : cur);
+            cur = cur.next;
+          }
+          return res;
+        }
+
+        function __arrayToTree(arr) {
+          if (!Array.isArray(arr) || arr.length === 0 || arr[0] === null) return null;
+          const root = new TreeNode(arr[0]);
+          const queue = [root];
+          let i = 1;
+          while (queue.length > 0 && i < arr.length) {
+            const node = queue.shift();
+            if (i < arr.length && arr[i] !== null && arr[i] !== undefined) {
+              node.left = new TreeNode(arr[i]);
+              queue.push(node.left);
+            }
+            i++;
+            if (i < arr.length && arr[i] !== null && arr[i] !== undefined) {
+              node.right = new TreeNode(arr[i]);
+              queue.push(node.right);
+            }
+            i++;
+          }
+          return root;
+        }
+
+        function __treeToArray(root) {
+          if (!root) return [];
+          const res = [];
+          const queue = [root];
+          while (queue.length > 0) {
+            const node = queue.shift();
+            if (node) {
+              res.push(node.val);
+              queue.push(node.left);
+              queue.push(node.right);
+            } else {
+              res.push(null);
+            }
+          }
+          while (res.length > 0 && res[res.length - 1] === null) {
+            res.pop();
+          }
+          return res;
+        }
+
         ${code}
+
         (function() {
           if (typeof solution === 'function') {
             let parsedArgs;
@@ -50,6 +126,8 @@ const executeJavaScript = async (code, input = '', timeoutMs = 2000) => {
               const p = JSON.parse(${JSON.stringify(input)});
               if (!Array.isArray(p)) {
                 parsedArgs = [p];
+              } else if (solution.length === 1 && p.length === 1 && Array.isArray(p[0])) {
+                parsedArgs = p;
               } else if (solution.length === 1 && p.length > 1) {
                 parsedArgs = [p];
               } else {
@@ -58,8 +136,36 @@ const executeJavaScript = async (code, input = '', timeoutMs = 2000) => {
             } catch {
               parsedArgs = [${JSON.stringify(input)}];
             }
-            const res = solution.apply(null, parsedArgs);
+
+            // Check if solution operates on ListNode or TreeNode
+            const codeStr = solution.toString();
+            const isListProb = codeStr.includes('.next') || codeStr.includes('ListNode');
+            const isTreeProb = (codeStr.includes('.left') || codeStr.includes('.right') || codeStr.includes('TreeNode')) && !isListProb;
+
+            let finalArgs = parsedArgs.map((arg, idx) => {
+              if (idx === 0 && isListProb && Array.isArray(arg)) {
+                return __arrayToList(arg);
+              }
+              if (idx === 0 && isTreeProb && Array.isArray(arg)) {
+                return __arrayToTree(arg);
+              }
+              return arg;
+            });
+
+            let res;
+            try {
+              res = solution.apply(null, finalArgs);
+            } catch (err) {
+              // Fallback to original parsedArgs if custom conversion threw
+              res = solution.apply(null, parsedArgs);
+            }
+
             if (res !== undefined) {
+              if (res && typeof res === 'object' && ('next' in res || ('val' in res && !('left' in res)))) {
+                res = __listToArray(res);
+              } else if (res && typeof res === 'object' && ('left' in res || 'right' in res)) {
+                res = __treeToArray(res);
+              }
               console.log(typeof res === 'object' ? JSON.stringify(res) : String(res));
             }
           }

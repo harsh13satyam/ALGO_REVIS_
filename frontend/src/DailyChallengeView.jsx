@@ -113,11 +113,12 @@ const DailyChallengeView = ({ navigate, params = {} }) => {
       const targetChallengeId = params.challengeId || urlParams.get('challengeId');
       const targetQ = params.q || urlParams.get('q');
       const initFolder = targetFolder || params.folder || urlParams.get('folder') || 'all';
+      const targetProbId = params.problemId || urlParams.get('problemId') || null;
 
       if (isRandomMode) {
         setWorkspaceMode('random');
         setSelectedFolder(initFolder);
-        await fetchRandomQuestion(initFolder);
+        await fetchRandomQuestion(initFolder, targetProbId);
       } else {
         setWorkspaceMode('daily');
         if (targetQ === 'A' || targetQ === 'B') {
@@ -190,8 +191,8 @@ const DailyChallengeView = ({ navigate, params = {} }) => {
     }
   };
 
-  // Fetch a random saved question from user's MongoDB collection
-  const fetchRandomQuestion = async (folderToUse = selectedFolder) => {
+  // Fetch a saved question (or specific problem) from user's MongoDB collection
+  const fetchRandomQuestion = async (folderToUse = selectedFolder, targetProblemId = null) => {
     setIsFetchingRandom(true);
     setRandomNotice('');
     setAiGenError('');
@@ -199,8 +200,8 @@ const DailyChallengeView = ({ navigate, params = {} }) => {
     setRevealedSolution(null);
     try {
       const folderQuery = folderToUse === 'all' ? '' : folderToUse;
-      const currentProbId = challenge?.questionA?.problemId || '';
-      const res = await api.getRandomChallenge(folderQuery, currentProbId);
+      const currentProbId = targetProblemId ? '' : (challenge?.questionA?.problemId || '');
+      const res = await api.getRandomChallenge(folderQuery, currentProbId, targetProblemId || '');
 
       if (res?.challenge) {
         setChallenge(res.challenge);
@@ -663,9 +664,9 @@ const DailyChallengeView = ({ navigate, params = {} }) => {
             </button>
           </div>
 
-          {/* Folder filter dropdown for random practice */}
+          {/* Folder and Problem selector for practice workspace */}
           {workspaceMode === 'random' && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <select
                 value={selectedFolder}
                 onChange={(e) => {
@@ -673,17 +674,51 @@ const DailyChallengeView = ({ navigate, params = {} }) => {
                   fetchRandomQuestion(e.target.value);
                 }}
                 className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white outline-none focus:border-purple-500 font-mono"
+                title="Select Folder"
               >
-                <option value="all">📁 All Saved Folders</option>
-                {availableFolders.map((f, i) => (
-                  <option key={i} value={f}>📂 {f}</option>
-                ))}
+                <option value="all">📁 All Folders ({allSavedProblems.length} saved)</option>
+                {availableFolders.map((f, i) => {
+                  const count = allSavedProblems.filter(p => p.pattern === f).length;
+                  return (
+                    <option key={i} value={f}>
+                      📂 {f} {count > 0 ? `(${count})` : ''}
+                    </option>
+                  );
+                })}
               </select>
+
+              {allSavedProblems.length > 0 && (
+                <select
+                  value={challenge?.questionA?.problemId || ''}
+                  onChange={(e) => {
+                    const chosenId = e.target.value;
+                    if (chosenId) {
+                      const found = allSavedProblems.find(p => p._id === chosenId);
+                      if (found && found.pattern && found.pattern !== selectedFolder && selectedFolder !== 'all') {
+                        setSelectedFolder(found.pattern);
+                      }
+                      fetchRandomQuestion(selectedFolder, chosenId);
+                    }
+                  }}
+                  className="bg-slate-950 border border-indigo-800/80 rounded-lg px-2.5 py-1.5 text-xs text-indigo-300 outline-none focus:border-indigo-400 font-mono max-w-[220px] truncate"
+                  title="Choose specific problem from folder"
+                >
+                  <option value="" disabled>📄 Select Question in Folder...</option>
+                  {allSavedProblems
+                    .filter(p => selectedFolder === 'all' || p.pattern === selectedFolder)
+                    .map((prob) => (
+                      <option key={prob._id} value={prob._id}>
+                        {prob.name} {prob.difficulty ? `[${prob.difficulty}]` : ''}
+                      </option>
+                    ))}
+                </select>
+              )}
 
               <button
                 onClick={() => fetchRandomQuestion(selectedFolder)}
                 disabled={isFetchingRandom}
                 className="flex items-center gap-1 px-3 py-1.5 bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold rounded-lg shadow transition disabled:opacity-50"
+                title="Pick another random question from this folder"
               >
                 <span className={`material-symbols-outlined text-sm ${isFetchingRandom ? 'animate-spin' : ''}`}>shuffle</span>
                 {isFetchingRandom ? 'Picking...' : 'Next Random Question'}

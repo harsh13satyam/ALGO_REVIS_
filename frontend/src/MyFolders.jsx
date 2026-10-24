@@ -262,6 +262,15 @@ const MyFolders = ({ navigate, user }) => {
                               <span className="material-symbols-outlined text-[14px]">link</span> Solve
                             </a>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => navigate('daily_challenge', { mode: 'random', folder: selectedFolder, problemId: prob._id })}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-lg text-xs font-bold shadow-sm transition hover:scale-105 cursor-pointer"
+                            title="Open problem in compiler workspace with AI generated variation"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">bolt</span>
+                            Practice with AI
+                          </button>
                           {prob.code && (
                             <button
                               type="button"

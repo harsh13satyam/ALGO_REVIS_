@@ -81,40 +81,48 @@ router.get('/today', async (req, res) => {
   }
 });
 
-// GET /api/challenges/random - Fetch a random saved question and create a unified practice workspace session
+// GET /api/challenges/random - Fetch a saved question (or specific problem) and create a unified practice workspace session
 router.get('/random', async (req, res) => {
   try {
-    const { folder, excludeId } = req.query;
+    const { folder, excludeId, problemId } = req.query;
 
-    // Filter problems strictly for the authenticated user
-    const query = { user: req.user._id };
-    if (folder && folder !== 'all' && folder.trim() !== '') {
-      query.pattern = folder.trim();
+    let selectedProblem = null;
+    if (problemId) {
+      selectedProblem = await Problem.findOne({ _id: problemId, user: req.user._id });
     }
 
-    const userProblems = await Problem.find(query).sort({ createdAt: -1 });
-
-    if (!userProblems || userProblems.length === 0) {
-      const distinctFolders = await Problem.distinct('pattern', { user: req.user._id });
-      return res.status(404).json({
-        message: folder && folder !== 'all'
-          ? `No questions found in folder "${folder}". Please select another folder or save questions first.`
-          : 'You have not saved any coding questions yet. Save questions in folders to practice!',
-        folders: distinctFolders
-      });
-    }
-
-    // Non-repeating selection: avoid immediately picking the same question when alternatives exist
-    let eligible = userProblems;
-    if (excludeId && userProblems.length > 1) {
-      eligible = userProblems.filter(p => p._id.toString() !== excludeId);
-      if (eligible.length === 0) {
-        eligible = userProblems;
+    let userProblems = [];
+    if (!selectedProblem) {
+      // Filter problems strictly for the authenticated user
+      const query = { user: req.user._id };
+      if (folder && folder !== 'all' && folder.trim() !== '') {
+        query.pattern = folder.trim();
       }
-    }
 
-    const randomIndex = Math.floor(Math.random() * eligible.length);
-    const selectedProblem = eligible[randomIndex];
+      userProblems = await Problem.find(query).sort({ createdAt: -1 });
+
+      if (!userProblems || userProblems.length === 0) {
+        const distinctFolders = await Problem.distinct('pattern', { user: req.user._id });
+        return res.status(404).json({
+          message: folder && folder !== 'all'
+            ? `No questions found in folder "${folder}". Please select another folder or save questions first.`
+            : 'You have not saved any coding questions yet. Save questions in folders to practice!',
+          folders: distinctFolders
+        });
+      }
+
+      // Non-repeating selection: avoid immediately picking the same question when alternatives exist
+      let eligible = userProblems;
+      if (excludeId && userProblems.length > 1) {
+        eligible = userProblems.filter(p => p._id.toString() !== excludeId);
+        if (eligible.length === 0) {
+          eligible = userProblems;
+        }
+      }
+
+      const randomIndex = Math.floor(Math.random() * eligible.length);
+      selectedProblem = eligible[randomIndex];
+    }
 
     // Collect all links for problems sharing the same name
     const allLinks = await resolveAllLinksForQuestion(req.user._id, selectedProblem.name, selectedProblem);

@@ -66,8 +66,8 @@ export const api = {
   // Challenges, Compiler Workspace & Scheduler
   getTodayChallenge: () => request('/api/challenges/today'),
   getChallengeById: (id) => request(`/api/challenges/${id}`),
-  getRandomChallenge: (folder = '', excludeId = '') => 
-    request(`/api/challenges/random?folder=${encodeURIComponent(folder)}&excludeId=${encodeURIComponent(excludeId)}`),
+  getRandomChallenge: (folder = '', excludeId = '', problemId = '') => 
+    request(`/api/challenges/random?folder=${encodeURIComponent(folder)}&excludeId=${encodeURIComponent(excludeId)}&problemId=${encodeURIComponent(problemId)}`),
   generateSimilarAIQuestion: (payload) => 
     request('/api/challenges/generate-similar', { method: 'POST', body: JSON.stringify(payload) }),
   getPracticeHistory: () => request('/api/challenges/practice-history'),
