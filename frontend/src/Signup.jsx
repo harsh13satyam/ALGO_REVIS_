@@ -161,6 +161,20 @@ const Signup = ({ navigate, onLoginSuccess }) => {
 
       <main className="flex-grow flex items-center justify-center px-6 py-12">
         <div className="w-full mx-auto max-w-[460px] z-10">
+          {/* Back to Home Button */}
+          {navigate && (
+            <div className="mb-4 text-left">
+              <button
+                type="button"
+                onClick={() => navigate('landing')}
+                className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant hover:text-primary transition font-medium px-2 py-1 rounded-lg hover:bg-surface-container-high"
+              >
+                <span className="material-symbols-outlined text-sm">arrow_back</span>
+                Back to Home
+              </button>
+            </div>
+          )}
+
           {/* Header / Brand Anchor */}
           <header className="mb-6 text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-500/10 mb-4 border border-indigo-500/20 shadow-sm">

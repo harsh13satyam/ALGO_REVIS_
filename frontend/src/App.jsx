@@ -9,11 +9,12 @@ import LoginPage from './LoginPage';
 import DailyChallengeView from './DailyChallengeView';
 import DsaSheetsView from './DsaSheetsView';
 import MockTestsView from './MockTestsView';
+import LandingPage from './LandingPage';
 import api from './api';
 import './index.css';
 
 function App() {
-  const [currentView, setCurrentView] = useState('login');
+  const [currentView, setCurrentView] = useState('landing');
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -53,12 +54,12 @@ function App() {
         } else {
           setIsLoggedIn(false);
           setCurrentUser(null);
-          setCurrentView('login');
+          setCurrentView(viewParam || 'landing');
         }
       } catch {
         setIsLoggedIn(false);
         setCurrentUser(null);
-        setCurrentView('login');
+        setCurrentView(viewParam || 'landing');
       } finally {
         setIsCheckingAuth(false);
       }
@@ -86,7 +87,7 @@ function App() {
     localStorage.removeItem('userName');
     setCurrentUser(null);
     setIsLoggedIn(false);
-    setCurrentView('login');
+    setCurrentView('landing');
   };
 
   if (isCheckingAuth) {
@@ -118,8 +119,10 @@ function App() {
       {!isLoggedIn ? (
         currentView === 'signup' ? (
           <Signup navigate={handleNavigate} onLoginSuccess={handleLoginSuccess} />
-        ) : (
+        ) : currentView === 'login' ? (
           <LoginPage navigate={handleNavigate} onLoginSuccess={handleLoginSuccess} />
+        ) : (
+          <LandingPage navigate={handleNavigate} onLoginSuccess={handleLoginSuccess} />
         )
       ) : (
         <>
