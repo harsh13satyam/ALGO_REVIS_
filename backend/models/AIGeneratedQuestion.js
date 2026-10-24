@@ -8,9 +8,8 @@ const AIGeneratedQuestionSchema = new mongoose.Schema({
     index: true
   },
   sourceQuestionId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Problem',
-    required: true,
+    type: mongoose.Schema.Types.Mixed,
+    required: false,
     index: true
   },
   title: {

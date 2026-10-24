@@ -236,15 +236,17 @@ const DailyChallengeView = ({ navigate, params = {} }) => {
   };
 
   // Generate an original similar question using AI inspired by Question A
-  const handleGenerateSimilarAI = async () => {
+  const handleGenerateSimilarAI = async (targetDifficulty = null) => {
     if (!challenge?._id) return;
     setIsGeneratingAI(true);
     setAiGenError('');
     setOutputConsole(null);
+    setRevealedSolution(null);
     try {
       const res = await api.generateSimilarAIQuestion({
         challengeId: challenge._id,
-        sourceQuestionId: challenge.questionA.problemId
+        sourceQuestionId: challenge.questionA?.problemId,
+        targetDifficulty: targetDifficulty || challenge.questionA?.difficulty || 'Medium'
       });
 
       if (res?.challenge) {
@@ -804,7 +806,7 @@ const DailyChallengeView = ({ navigate, params = {} }) => {
             {/* Generate Similar AI Question Shortcut Button on Tab A */}
             {activeQuestion === 'A' && (
               <button
-                onClick={handleGenerateSimilarAI}
+                onClick={() => handleGenerateSimilarAI()}
                 disabled={isGeneratingAI}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold rounded-lg shadow transition disabled:opacity-50"
               >
@@ -812,6 +814,20 @@ const DailyChallengeView = ({ navigate, params = {} }) => {
                   {isGeneratingAI ? 'sync' : 'auto_awesome'}
                 </span>
                 {isGeneratingAI ? 'Generating AI Problem...' : '⚡ Generate Similar AI Question'}
+              </button>
+            )}
+
+            {/* Next AI Question button when Question B is solved */}
+            {activeQuestion === 'B' && challenge?.questionB?.completed && (
+              <button
+                onClick={() => handleGenerateSimilarAI()}
+                disabled={isGeneratingAI}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:brightness-110 text-white text-xs font-bold rounded-lg shadow transition disabled:opacity-50"
+              >
+                <span className={`material-symbols-outlined text-sm ${isGeneratingAI ? 'animate-spin' : ''}`}>
+                  {isGeneratingAI ? 'sync' : 'add_task'}
+                </span>
+                {isGeneratingAI ? 'Generating Next...' : '✨ Next AI Challenge'}
               </button>
             )}
 
@@ -915,6 +931,43 @@ const DailyChallengeView = ({ navigate, params = {} }) => {
                 </div>
               ) : (
                 <>
+                  {/* Celebratory Next Question Banner when Question B is solved */}
+                  {!isQuestionA && challenge?.questionB?.completed && (
+                    <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900 to-purple-950/80 border border-emerald-500/50 rounded-xl p-4 shadow-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                          <span className="material-symbols-outlined text-lg">verified</span>
+                          <span>Challenge Solved! 100% Tests Passed</span>
+                        </div>
+                        <span className="text-[11px] font-mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">
+                          AI Challenge Solved ✓
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed">
+                        Ready for more? Generate the next problem with rigorous edge cases to deepen your mastery of this pattern.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <button
+                          onClick={() => handleGenerateSimilarAI('Medium')}
+                          disabled={isGeneratingAI}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold rounded-lg shadow transition disabled:opacity-50"
+                        >
+                          <span className={`material-symbols-outlined text-sm ${isGeneratingAI ? 'animate-spin' : ''}`}>
+                            {isGeneratingAI ? 'sync' : 'auto_awesome'}
+                          </span>
+                          {isGeneratingAI ? 'Generating Next Problem...' : '⚡ Next AI Question (Same Pattern)'}
+                        </button>
+                        <button
+                          onClick={() => handleGenerateSimilarAI('Hard')}
+                          disabled={isGeneratingAI}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 text-xs font-bold rounded-lg shadow transition disabled:opacity-50"
+                        >
+                          <span>🔥 Next Level: Hard Challenge</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Problem Description / Statement */}
                   <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-4 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
                     {currentQ?.statement || currentQ?.description || currentQ?.notes || 'No description provided.'}

@@ -195,7 +195,7 @@ router.get('/random', async (req, res) => {
 // POST /api/challenges/generate-similar - Generate an original AI question inspired by the selected saved question
 router.post('/generate-similar', async (req, res) => {
   try {
-    const { challengeId, sourceQuestionId } = req.body;
+    const { challengeId, sourceQuestionId, targetDifficulty } = req.body;
 
     if (!challengeId) {
       return res.status(400).json({ message: 'challengeId is required' });
@@ -211,15 +211,15 @@ router.post('/generate-similar', async (req, res) => {
     if (sourceQuestionId) {
       sourceProblem = await Problem.findOne({ _id: sourceQuestionId, user: req.user._id });
     }
-    if (!sourceProblem && challenge.questionA.problemId) {
+    if (!sourceProblem && challenge.questionA?.problemId) {
       sourceProblem = await Problem.findOne({ _id: challenge.questionA.problemId, user: req.user._id });
     }
 
-    const pattern = sourceProblem?.pattern || challenge.questionA.pattern || 'General';
-    const difficulty = sourceProblem?.difficulty || challenge.questionA.difficulty || 'Medium';
-    const baseName = sourceProblem?.name || challenge.questionA.name || pattern;
+    const pattern = sourceProblem?.pattern || challenge.questionA?.pattern || 'General';
+    const difficulty = targetDifficulty || sourceProblem?.difficulty || challenge.questionA?.difficulty || 'Medium';
+    const baseName = sourceProblem?.name || challenge.questionA?.name || pattern;
 
-    // Call AI generation service with sandbox validation
+    // Call AI generation service with sandbox validation and 5+ test cases
     const aiQuestion = await generateSimilarQuestion(
       pattern,
       difficulty,
@@ -234,7 +234,7 @@ router.post('/generate-similar', async (req, res) => {
     // Persist to permanent AIGeneratedQuestion collection
     const savedAiQuestion = new AIGeneratedQuestion({
       user: req.user._id,
-      sourceQuestionId: sourceProblem?._id || challenge.questionA.problemId || challenge._id,
+      sourceQuestionId: sourceProblem?._id || challenge.questionA?.problemId || challenge._id,
       title: aiQuestion.title,
       problemStatement: aiQuestion.statement,
       inputFormat: aiQuestion.inputFormat || 'Standard input format',
@@ -252,9 +252,18 @@ router.post('/generate-similar', async (req, res) => {
 
     await savedAiQuestion.save();
 
+    // Reset user draft for Question B so new problem gets fresh starter code
+    if (challenge.userDrafts) {
+      challenge.userDrafts.questionB = {
+        code: '',
+        language: 'javascript',
+        updatedAt: null
+      };
+    }
+
     // Update Question B on the challenge workspace document
     challenge.questionB = {
-      sourceQuestionId: sourceProblem?._id || challenge.questionA.problemId,
+      sourceQuestionId: sourceProblem?._id || challenge.questionA?.problemId,
       title: aiQuestion.title,
       statement: aiQuestion.statement,
       inputFormat: aiQuestion.inputFormat || 'Standard input format',

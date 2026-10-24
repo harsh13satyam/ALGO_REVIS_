@@ -24,8 +24,7 @@ const PracticeAttemptSchema = new mongoose.Schema({
     index: true
   },
   questionId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Problem'
+    type: mongoose.Schema.Types.Mixed
   },
   questionTitle: {
     type: String,

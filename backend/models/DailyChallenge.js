@@ -20,7 +20,7 @@ const DailyChallengeSchema = new mongoose.Schema({
   },
   questionA: {
     problemId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'Problem'
     },
     name: {
@@ -44,8 +44,7 @@ const DailyChallengeSchema = new mongoose.Schema({
       pattern: String,
       difficulty: String,
       problemId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Problem'
+        type: mongoose.Schema.Types.Mixed
       }
     }],
     pattern: {
@@ -79,7 +78,7 @@ const DailyChallengeSchema = new mongoose.Schema({
   },
   questionB: {
     sourceQuestionId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.Mixed,
       ref: 'Problem'
     },
     title: {
@@ -163,7 +162,7 @@ const DailyChallengeSchema = new mongoose.Schema({
   submissions: [{
     questionType: { type: String, enum: ['A', 'B'] },
     questionSource: { type: String, enum: ['saved', 'ai'] },
-    sourceQuestionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Problem' },
+    sourceQuestionId: { type: mongoose.Schema.Types.Mixed },
     language: String,
     code: String,
     status: { type: String, enum: ['passed', 'failed', 'error'] },
@@ -173,6 +172,10 @@ const DailyChallengeSchema = new mongoose.Schema({
     executionResult: mongoose.Schema.Types.Mixed,
     submittedAt: { type: Date, default: Date.now }
   }],
+  aiSolvedCount: {
+    type: Number,
+    default: 0
+  },
   deliveryStatus: {
     email: {
       status: {

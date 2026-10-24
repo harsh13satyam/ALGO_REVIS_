@@ -550,25 +550,54 @@ const generateSimilarQuestion = async (pattern = 'General', difficulty = 'Medium
 
   if (apiKey && apiKey !== 'your_gemini_api_key_here') {
     try {
-      const prompt = `You are a senior algorithmic problem setter.
-Create an original algorithmic coding challenge inspired by: "${baseProblemName || pattern}" (${pattern} pattern).
+      const prompt = `You are a principal algorithmic challenge designer for top-tier software engineering interviews.
+Create a brand new, highly engaging algorithmic coding problem inspired by: "${baseProblemName || pattern}" (${pattern} pattern).
 Target Difficulty: ${difficulty}.
-CRITICAL: Return ONLY valid, parseable JSON with NO markdown code fences, NO backticks.
+CRITICAL CONSTRAINT: Do NOT repeat the problem "${currentQuestionTitle}". Create a novel, distinct variation testing the same core algorithmic invariant.
+
+TEST CASES REQUIREMENT (MANDATORY):
+- "testCases": MUST contain at least 4 distinct public test cases:
+  1. Standard typical example.
+  2. Alternate scenario (reversed order, alternate branching).
+  3. Minimum boundary condition (minimum length array, single element, zero).
+  4. Edge case scenario (duplicates, alternating elements, boundary limits).
+- "hiddenTestCases": MUST contain at least 3 distinct hidden stress test cases:
+  5. Scaled input (larger constraints, N >= 1000).
+  6. Negative numbers or extreme values.
+  7. Worst-case algorithmic performance pattern.
+
+Return ONLY valid, parseable JSON with NO markdown code fences, NO backticks.
 JSON Structure:
 {
-  "title": "Problem Title",
-  "statement": "Detailed problem description",
-  "inputFormat": "Input description",
-  "outputFormat": "Output description",
+  "title": "Unique Problem Title",
+  "statement": "Detailed, crystal-clear problem statement with input/output requirements",
+  "inputFormat": "Formal description of input types and shapes",
+  "outputFormat": "Formal description of expected return value",
   "difficulty": "${difficulty}",
   "pattern": "${pattern}",
-  "constraints": ["1 <= n <= 10^5"],
-  "examples": [{ "input": "...", "output": "...", "explanation": "..." }],
-  "starterCode": { "javascript": "function solution(input) { return 0; }", "python": "def solution(input): return 0", "cpp": "int main() { return 0; }" },
-  "testCases": [{ "input": "[...]", "expectedOutput": "..." }],
-  "hiddenTestCases": [{ "input": "[...]", "expectedOutput": "..." }],
-  "referenceSolution": "function solution(input) { return result; }",
-  "explanation": "Intuition"
+  "constraints": ["1 <= nums.length <= 10^5", "-10^4 <= nums[i] <= 10^4"],
+  "examples": [
+    { "input": "...", "output": "...", "explanation": "..." },
+    { "input": "...", "output": "...", "explanation": "..." }
+  ],
+  "starterCode": {
+    "javascript": "function solution(input) {\\n  // Write your code here\\n  return 0;\\n}",
+    "python": "def solution(input):\\n    # Write your code here\\n    return 0",
+    "cpp": "#include <iostream>\\n#include <vector>\\nusing namespace std;\\nint main() {\\n    return 0;\\n}"
+  },
+  "testCases": [
+    { "input": "[...]", "expectedOutput": "..." },
+    { "input": "[...]", "expectedOutput": "..." },
+    { "input": "[...]", "expectedOutput": "..." },
+    { "input": "[...]", "expectedOutput": "..." }
+  ],
+  "hiddenTestCases": [
+    { "input": "[...]", "expectedOutput": "..." },
+    { "input": "[...]", "expectedOutput": "..." },
+    { "input": "[...]", "expectedOutput": "..." }
+  ],
+  "referenceSolution": "function solution(input) { ... }",
+  "explanation": "Intuition, time complexity, and space complexity breakdown."
 }`;
 
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
@@ -585,8 +614,9 @@ JSON Structure:
         const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (rawText) {
           const parsed = JSON.parse(rawText.trim());
-          if (parsed.title && parsed.statement && parsed.testCases && parsed.referenceSolution) {
-            const validation = validateSolutionInSandbox(parsed.referenceSolution, parsed.testCases);
+          if (parsed.title && parsed.statement && parsed.testCases && parsed.testCases.length >= 3 && parsed.referenceSolution) {
+            const allTests = [...(parsed.testCases || []), ...(parsed.hiddenTestCases || [])];
+            const validation = validateSolutionInSandbox(parsed.referenceSolution, allTests);
             if (validation.passed) {
               parsed.validated = true;
               parsed.validationDetails = validation.details;
@@ -608,11 +638,64 @@ JSON Structure:
   let eligible = candidates.filter(c => c.title !== currentQuestionTitle);
   if (eligible.length === 0) eligible = candidates;
 
-  const selected = eligible[Math.floor(Math.random() * eligible.length)];
-  const validation = validateSolutionInSandbox(selected.referenceSolution, selected.testCases);
+  const selected = { ...eligible[Math.floor(Math.random() * eligible.length)] };
+
+  // Ensure selected has at least 4 visible test cases and at least 2 hidden test cases
+  let allTestCases = [...(selected.testCases || [])];
+  let hiddenCases = [...(selected.hiddenTestCases || [])];
+
+  // If total test cases < 5, synthesize additional edge cases using reference solution
+  if (allTestCases.length + hiddenCases.length < 5 && selected.referenceSolution) {
+    try {
+      const sandbox = {};
+      const context = vm.createContext(sandbox);
+      const script = new vm.Script(selected.referenceSolution);
+      script.runInContext(context, { timeout: 1000 });
+
+      if (typeof sandbox.solution === 'function' && allTestCases.length > 0) {
+        // Clone first test case input to create variations
+        const firstInputRaw = allTestCases[0].input;
+        let parsed = JSON.parse(firstInputRaw);
+
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (Array.isArray(parsed[0])) {
+            // Variation 1: Single or 2-element edge case
+            const edgeArg = parsed[0].slice(0, 2);
+            const extraArgs = [edgeArg, ...parsed.slice(1)];
+            try {
+              const res1 = sandbox.solution.apply(null, extraArgs);
+              if (res1 !== undefined) {
+                allTestCases.push({
+                  input: JSON.stringify(extraArgs),
+                  expectedOutput: JSON.stringify(res1)
+                });
+              }
+            } catch {}
+
+            // Variation 2: Reversed order
+            const revArg = [...parsed[0]].reverse();
+            const revArgs = [revArg, ...parsed.slice(1)];
+            try {
+              const res2 = sandbox.solution.apply(null, revArgs);
+              if (res2 !== undefined) {
+                hiddenCases.push({
+                  input: JSON.stringify(revArgs),
+                  expectedOutput: JSON.stringify(res2)
+                });
+              }
+            } catch {}
+          }
+        }
+      }
+    } catch {}
+  }
+
+  const validation = validateSolutionInSandbox(selected.referenceSolution, allTestCases);
 
   return {
     ...selected,
+    testCases: allTestCases,
+    hiddenTestCases: hiddenCases,
     validated: validation.passed,
     validationDetails: validation.details
   };
