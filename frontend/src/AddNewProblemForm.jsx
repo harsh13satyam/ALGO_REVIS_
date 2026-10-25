@@ -8,6 +8,9 @@ const AddNewProblemForm = ({ navigate, user, onLogout }) => {
   const [pattern, setPattern] = useState('');
   const [difficulty, setDifficulty] = useState('Medium');
   const [notes, setNotes] = useState('');
+  const [solutionCode, setSolutionCode] = useState('');
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [imageBase64, setImageBase64] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [existingPatterns, setExistingPatterns] = useState(['Sliding Window', 'Two Pointers', 'Dynamic Programming']);
@@ -27,6 +30,30 @@ const AddNewProblemForm = ({ navigate, user, onLogout }) => {
     fetchPatterns();
   }, []);
 
+  // Listen for global Ctrl + V clipboard paste of images
+  useEffect(() => {
+    const handlePaste = (e) => {
+      if (!e.clipboardData || !e.clipboardData.items) return;
+      const items = e.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          if (blob) {
+            e.preventDefault();
+            const reader = new FileReader();
+            reader.onload = (loadEvt) => {
+              setImageBase64(loadEvt.target.result);
+            };
+            reader.readAsDataURL(blob);
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, []);
+
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -35,6 +62,37 @@ const AddNewProblemForm = ({ navigate, user, onLogout }) => {
         setImageBase64(reader.result);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAIGenerateIntuition = async () => {
+    if (!name && !solutionCode) {
+      alert("Please provide either a Problem Title or paste Solution Code for AI to analyze.");
+      return;
+    }
+    setIsGeneratingAI(true);
+    try {
+      const data = await api.generateIntuition({
+        title: name,
+        code: solutionCode || name,
+        pattern: pattern
+      });
+      if (data) {
+        if (data.pattern && !pattern) setPattern(data.pattern);
+        let noteAppend = [];
+        if (data.intuition) noteAppend.push(`Intuition: ${data.intuition}`);
+        if (data.keyObservation) noteAppend.push(`Key Observation: ${data.keyObservation}`);
+        if (data.timeComplexity || data.spaceComplexity) {
+          noteAppend.push(`Complexity: Time ${data.timeComplexity || 'N/A'}, Space ${data.spaceComplexity || 'N/A'}`);
+        }
+        if (noteAppend.length > 0) {
+          setNotes(prev => prev ? `${prev}\n\n${noteAppend.join('\n')}` : noteAppend.join('\n'));
+        }
+      }
+    } catch (err) {
+      alert("AI intuition generation error: " + (err.message || 'Service unavailable'));
+    } finally {
+      setIsGeneratingAI(false);
     }
   };
 
@@ -55,6 +113,7 @@ const AddNewProblemForm = ({ navigate, user, onLogout }) => {
         pattern,
         difficulty,
         notes,
+        code: solutionCode,
         imageBase64
       });
       navigate('folders');
@@ -176,6 +235,7 @@ const AddNewProblemForm = ({ navigate, user, onLogout }) => {
             {/* Name & Link Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
+                <label className="font-label text-xs font-bold uppercase tracking-wider text-outline">Problem Title</label>
                 <input className="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 text-on-surface placeholder:text-outline/60 focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Longest Palindromic Substring" type="text" value={name} onChange={e => setName(e.target.value)} />
               </div>
               <div className="space-y-2">
@@ -185,6 +245,7 @@ const AddNewProblemForm = ({ navigate, user, onLogout }) => {
                 </div>
               </div>
             </div>
+
             {/* Pattern & Difficulty Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -196,37 +257,96 @@ const AddNewProblemForm = ({ navigate, user, onLogout }) => {
               </div>
               <div className="space-y-3">
                 <label className="font-label text-xs font-bold uppercase tracking-wider text-outline">Difficulty</label>
-                  <button onClick={() => setDifficulty('Easy')} className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${difficulty === 'Easy' ? 'bg-secondary-container text-on-secondary-container ring-2 ring-primary/40' : 'bg-surface-container-high text-on-surface-variant'}`}>Easy</button>
-                  <button onClick={() => setDifficulty('Medium')} className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${difficulty === 'Medium' ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant ring-2 ring-primary/40' : 'bg-surface-container-high text-on-surface-variant'}`}>Medium</button>
-                  <button onClick={() => setDifficulty('Hard')} className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${difficulty === 'Hard' ? 'bg-error-container text-on-error-container ring-2 ring-primary/40' : 'bg-surface-container-high text-on-surface-variant'}`}>Hard</button>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setDifficulty('Easy')} className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${difficulty === 'Easy' ? 'bg-secondary-container text-on-secondary-container ring-2 ring-primary/40' : 'bg-surface-container-high text-on-surface-variant'}`}>Easy</button>
+                  <button type="button" onClick={() => setDifficulty('Medium')} className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${difficulty === 'Medium' ? 'bg-tertiary-fixed text-on-tertiary-fixed-variant ring-2 ring-primary/40' : 'bg-surface-container-high text-on-surface-variant'}`}>Medium</button>
+                  <button type="button" onClick={() => setDifficulty('Hard')} className={`flex-1 py-2 px-4 rounded-full text-xs font-bold transition-all ${difficulty === 'Hard' ? 'bg-error-container text-on-error-container ring-2 ring-primary/40' : 'bg-surface-container-high text-on-surface-variant'}`}>Hard</button>
+                </div>
               </div>
             </div>
-            {/* Notes Section */}
+
+            {/* Optional Solution Code for AI Intuition */}
             <div className="space-y-2">
-              <textarea className="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 text-on-surface placeholder:text-outline/60 focus:ring-2 focus:ring-primary/20 transition-all resize-none" placeholder="Break down the approach here. Mention time and space complexity..." rows="4" value={notes} onChange={e => setNotes(e.target.value)}></textarea>
+              <div className="flex items-center justify-between">
+                <label className="font-label text-xs font-bold uppercase tracking-wider text-outline">
+                  Solution Code <span className="text-[10px] lowercase text-outline/60">(optional for AI analysis)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowCodeInput(!showCodeInput)}
+                  className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-sm">{showCodeInput ? 'expand_less' : 'code'}</span>
+                  {showCodeInput ? 'Hide Code Box' : 'Paste Solution Code'}
+                </button>
+              </div>
+              {showCodeInput && (
+                <textarea
+                  className="w-full bg-slate-950 text-indigo-200 font-mono text-xs border border-slate-800 rounded-lg p-3 focus:ring-2 focus:ring-primary/20 transition-all resize-y"
+                  placeholder="// Paste your solution code here to let AI auto-extract intuition, pattern & complexity..."
+                  rows="5"
+                  value={solutionCode}
+                  onChange={e => setSolutionCode(e.target.value)}
+                />
+              )}
             </div>
-            {/* Upload Section */}
+
+            {/* Notes Section with AI Auto-Generate */}
             <div className="space-y-2">
-              <label className="font-label text-xs font-bold uppercase tracking-wider text-outline">Conceptual Snapshot</label>
+              <div className="flex items-center justify-between">
+                <label className="font-label text-xs font-bold uppercase tracking-wider text-outline">Notes & Intuition Breakdown</label>
+                <button
+                  type="button"
+                  onClick={handleAIGenerateIntuition}
+                  disabled={isGeneratingAI}
+                  className="px-3 py-1 rounded-lg text-xs font-bold bg-indigo-900/60 hover:bg-indigo-800 text-indigo-300 border border-indigo-700/60 shadow-sm flex items-center gap-1.5 transition-all disabled:opacity-50"
+                  title="Analyze title and code to auto-populate intuition, pattern, and complexity"
+                >
+                  <span className="material-symbols-outlined text-sm animate-pulse">auto_awesome</span>
+                  {isGeneratingAI ? 'Deducing Intuition...' : '✨ Auto-Generate Intuition'}
+                </button>
+              </div>
+              <textarea
+                className="w-full bg-surface-container-high border-none rounded-lg px-4 py-3 text-on-surface placeholder:text-outline/60 focus:ring-2 focus:ring-primary/20 transition-all resize-none"
+                placeholder="Break down the approach here, or click '✨ Auto-Generate Intuition' above! Mention time and space complexity..."
+                rows="4"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+              />
+            </div>
+
+            {/* Upload Section with Ctrl+V Clipboard Support */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-label text-xs font-bold uppercase tracking-wider text-outline">Conceptual Snapshot / Diagram</label>
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800">
+                  📋 Ctrl + V to Paste Anywhere
+                </span>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <label className="border-2 border-dashed border-outline-variant/30 rounded-xl p-6 flex flex-col items-center justify-center bg-surface-container-low hover:bg-surface-container-high transition-colors cursor-pointer group relative">
                   <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={handleImageUpload} />
                   <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-3xl mb-2">add_a_photo</span>
-                  <p className="text-[10px] font-label uppercase tracking-widest text-outline font-bold">Drag or Click to Upload</p>
-                  <p className="text-[9px] text-outline/60 mt-1">PNG, JPG up to 50MB</p>
+                  <p className="text-[10px] font-label uppercase tracking-widest text-outline font-bold">Paste (Ctrl+V) or Click to Upload</p>
+                  <p className="text-[9px] text-outline/60 mt-1">PNG, JPG directly to Cloudinary CDN</p>
                 </label>
                 {imageBase64 ? (
-                  <div className="relative group rounded-xl overflow-hidden border border-[rgba(53,37,205,0.15)]">
-                    <img alt="Handwritten note preview" className="w-full h-32 object-cover transition-transform group-hover:scale-105" src={imageBase64} />
+                  <div className="relative group rounded-xl overflow-hidden border border-[rgba(53,37,205,0.15)] bg-slate-950">
+                    <img alt="Handwritten note or diagram preview" className="w-full h-32 object-contain transition-transform group-hover:scale-105" src={imageBase64} />
+                    <div className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
+                      ✓ Snapshot Attached
+                    </div>
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <button onClick={() => setImageBase64('')} className="p-2 bg-white rounded-full text-error shadow-lg">
+                      <button type="button" onClick={() => setImageBase64('')} className="p-2 bg-white rounded-full text-error shadow-lg">
                         <span className="material-symbols-outlined">delete</span>
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-[rgba(53,37,205,0.15)] flex items-center justify-center bg-surface-container-lowest h-32">
-                    <span className="text-xs text-outline/60 font-bold uppercase tracking-widest">No Image</span>
+                  <div className="rounded-xl border border-[rgba(53,37,205,0.15)] flex flex-col items-center justify-center bg-surface-container-lowest h-32 p-3 text-center">
+                    <span className="material-symbols-outlined text-slate-400 text-2xl mb-1">content_paste</span>
+                    <span className="text-xs text-outline/60 font-bold uppercase tracking-widest">No Diagram</span>
+                    <span className="text-[10px] text-outline/50 mt-0.5">Snipping Tool screenshots paste directly</span>
                   </div>
                 )}
               </div>

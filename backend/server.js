@@ -17,6 +17,7 @@ const problemRoutes = require('./routes/problems');
 const challengeRoutes = require('./routes/challenges');
 const whatsappWebhookRoutes = require('./routes/whatsappWebhook');
 const healthRoutes = require('./routes/health');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 const server = http.createServer(app);
@@ -45,6 +46,7 @@ app.use(async (req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/challenges', challengeRoutes);
+app.use('/api/upload', uploadRoutes);
 app.use('/api/whatsapp/webhook', whatsappWebhookRoutes);
 app.use('/api/health', healthRoutes);
 

@@ -45,12 +45,29 @@ const AppHeader = ({
   const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(2);
   const [showNotificationPopup, setShowNotificationPopup] = useState(false);
+  const [userAvatar, setUserAvatar] = useState(
+    localStorage.getItem('userAvatar') ||
+    user?.avatar ||
+    'https://lh3.googleusercontent.com/aida-public/AB6AXuBplqHqcerbujnVnZP6b7vfk3bmK_kq0JyqYYykpVAImoP8aWi2p0p-iSHJa9ssYKKVCZFrV7JiffqnoYp5yL_6K0lMx9Ilh-64VPvae9X1ZTtc0zhY5Tui0vNHsCbnqs2nVIt5SokPSfOdfLrGMRxdajxELaXXiE5qMqjRjnZ8NFYk4BVEWS2sUJzcrNVhZ0keMupDiD4gAw2DpOULOGimwLtjrlmvdmDtlXOavYtknPl8WeBNwqVJJcFsGgyroUy-gy0M8-SY2s6L'
+  );
 
   useEffect(() => {
     if (user?.name) {
       setUserName(user.name);
       localStorage.setItem('userName', user.name);
     }
+  }, [user]);
+
+  useEffect(() => {
+    const handleAvatarUpdate = () => {
+      setUserAvatar(
+        localStorage.getItem('userAvatar') ||
+        user?.avatar ||
+        'https://lh3.googleusercontent.com/aida-public/AB6AXuBplqHqcerbujnVnZP6b7vfk3bmK_kq0JyqYYykpVAImoP8aWi2p0p-iSHJa9ssYKKVCZFrV7JiffqnoYp5yL_6K0lMx9Ilh-64VPvae9X1ZTtc0zhY5Tui0vNHsCbnqs2nVIt5SokPSfOdfLrGMRxdajxELaXXiE5qMqjRjnZ8NFYk4BVEWS2sUJzcrNVhZ0keMupDiD4gAw2DpOULOGimwLtjrlmvdmDtlXOavYtknPl8WeBNwqVJJcFsGgyroUy-gy0M8-SY2s6L'
+      );
+    };
+    window.addEventListener('userAvatarUpdated', handleAvatarUpdate);
+    return () => window.removeEventListener('userAvatarUpdated', handleAvatarUpdate);
   }, [user]);
 
   const handleSaveUserName = (newName) => {
@@ -200,7 +217,7 @@ const AppHeader = ({
                   <img
                     alt="User profile avatar"
                     className="w-8 h-8 sm:w-8 sm:h-8 rounded-full object-cover ring-2 ring-indigo-500/40 group-hover:ring-indigo-500 transition-all"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBplqHqcerbujnVnZP6b7vfk3bmK_kq0JyqYYykpVAImoP8aWi2p0p-iSHJa9ssYKKVCZFrV7JiffqnoYp5yL_6K0lMx9Ilh-64VPvae9X1ZTtc0zhY5Tui0vNHsCbnqs2nVIt5SokPSfOdfLrGMRxdajxELaXXiE5qMqjRjnZ8NFYk4BVEWS2sUJzcrNVhZ0keMupDiD4gAw2DpOULOGimwLtjrlmvdmDtlXOavYtknPl8WeBNwqVJJcFsGgyroUy-gy0M8-SY2s6L"
+                    src={userAvatar}
                   />
                   {/* Rating Badge on avatar for mobile */}
                   <span className="sm:hidden absolute -bottom-1 -right-1 px-1 py-0.2 rounded bg-slate-900 border border-slate-700 text-amber-400 font-mono text-[9px] font-bold">

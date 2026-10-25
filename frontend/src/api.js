@@ -53,6 +53,8 @@ export const api = {
   createProblem: (payload) => request('/api/problems', { method: 'POST', body: JSON.stringify(payload) }),
   editProblem: (id, payload) => request(`/api/problems/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteProblem: (id) => request(`/api/problems/${id}`, { method: 'DELETE' }),
+  generateIntuition: (payload) => request('/api/problems/generate-intuition', { method: 'POST', body: JSON.stringify(payload) }),
+  uploadImage: (image, folder = 'algorevis_uploads') => request('/api/upload', { method: 'POST', body: JSON.stringify({ image, folder }) }),
   renameFolder: (userName, oldPattern, newPattern) => 
     request(`/api/problems/folder/${encodeURIComponent(userName)}/${encodeURIComponent(oldPattern)}`, {
       method: 'PUT',

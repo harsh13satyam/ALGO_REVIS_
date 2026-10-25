@@ -3,6 +3,8 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Problem = require('../models/Problem');
 const { requireAuth } = require('../middleware/auth');
+const { generateIntuitionFromCode } = require('../services/aiService');
+const { uploadImage } = require('../services/cloudinaryService');
 
 router.use(requireAuth);
 
@@ -21,6 +23,21 @@ const getNextLocalCalendarDay = (timezone = 'UTC') => {
     return tomorrow;
   }
 };
+
+// POST /api/problems/generate-intuition - AI auto-generate intuition from code
+router.post('/generate-intuition', async (req, res) => {
+  try {
+    const { code, language, title, pattern } = req.body;
+    if (!code || !code.trim()) {
+      return res.status(400).json({ message: 'Code is required to generate intuition' });
+    }
+    const result = await generateIntuitionFromCode({ code, language, title, pattern });
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error('Error generating intuition:', err);
+    return res.status(500).json({ message: 'Failed to generate intuition: ' + err.message });
+  }
+});
 
 // GET /api/problems/check - Check if problem is already saved by this user
 router.get('/check', async (req, res) => {
@@ -140,7 +157,18 @@ router.post('/', async (req, res) => {
         if (difficulty && ['Easy', 'Medium', 'Hard'].includes(difficulty)) existing.difficulty = difficulty;
         if (description !== undefined) existing.description = description;
         if (notes !== undefined) existing.notes = notes;
-        if (imageBase64 !== undefined) existing.imageBase64 = imageBase64;
+        if (imageBase64 !== undefined) {
+          let updatedImageUrl = (imageBase64 || '').trim();
+          if (updatedImageUrl && updatedImageUrl.startsWith('data:image/')) {
+            try {
+              const uploadRes = await uploadImage(updatedImageUrl, 'algorevis_problems');
+              updatedImageUrl = uploadRes.url;
+            } catch (imgErr) {
+              console.warn('⚠️ [Cloudinary] Fallback to raw data on problem update:', imgErr.message);
+            }
+          }
+          existing.imageBase64 = updatedImageUrl;
+        }
         if (problemPlatform) existing.platform = problemPlatform;
         if (cleanProblemId) existing.problemId = cleanProblemId;
         if (language !== undefined) existing.language = language;
@@ -183,6 +211,17 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Convert image to Cloudinary CDN URL if data URI is provided
+    let finalImageUrl = (imageBase64 || '').trim();
+    if (finalImageUrl && finalImageUrl.startsWith('data:image/')) {
+      try {
+        const uploadRes = await uploadImage(finalImageUrl, 'algorevis_problems');
+        finalImageUrl = uploadRes.url;
+      } catch (imgErr) {
+        console.warn('⚠️ [Cloudinary] Fallback to raw data URI on problem creation:', imgErr.message);
+      }
+    }
+
     const newProblem = new Problem({
       user: req.user._id,
       userName: req.user.name,
@@ -192,7 +231,7 @@ router.post('/', async (req, res) => {
       pattern: problemPattern,
       difficulty: ['Easy', 'Medium', 'Hard'].includes(difficulty) ? difficulty : 'Medium',
       notes: finalNotes,
-      imageBase64: imageBase64 || '',
+      imageBase64: finalImageUrl,
       platform: problemPlatform,
       problemId: cleanProblemId,
       language: language || '',
@@ -302,7 +341,18 @@ const updateProblemHandler = async (req, res) => {
 
     if (difficulty && ['Easy', 'Medium', 'Hard'].includes(difficulty)) problem.difficulty = difficulty;
     if (notes !== undefined) problem.notes = notes;
-    if (imageBase64 !== undefined) problem.imageBase64 = imageBase64;
+    if (imageBase64 !== undefined) {
+      let updatedImageUrl = (imageBase64 || '').trim();
+      if (updatedImageUrl && updatedImageUrl.startsWith('data:image/')) {
+        try {
+          const uploadRes = await uploadImage(updatedImageUrl, 'algorevis_problems');
+          updatedImageUrl = uploadRes.url;
+        } catch (imgErr) {
+          console.warn('⚠️ [Cloudinary] Fallback to raw data URI on problem update:', imgErr.message);
+        }
+      }
+      problem.imageBase64 = updatedImageUrl;
+    }
     if (platform !== undefined) problem.platform = platform;
     if (problemId !== undefined) problem.problemId = problemId;
     if (language !== undefined) problem.language = language;

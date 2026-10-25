@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import api from './api';
+
+const DEFAULT_AVATAR = 'https://lh3.googleusercontent.com/aida-public/AB6AXuBplqHqcerbujnVnZP6b7vfk3bmK_kq0JyqYYykpVAImoP8aWi2p0p-iSHJa9ssYKKVCZFrV7JiffqnoYp5yL_6K0lMx9Ilh-64VPvae9X1ZTtc0zhY5Tui0vNHsCbnqs2nVIt5SokPSfOdfLrGMRxdajxELaXXiE5qMqjRjnZ8NFYk4BVEWS2sUJzcrNVhZ0keMupDiD4gAw2DpOULOGimwLtjrlmvdmDtlXOavYtknPl8WeBNwqVJJcFsGgyroUy-gy0M8-SY2s6L';
 
 /**
  * UserProfileModals - Interactive modals triggered from UserDropdownMenu & MobileNavDrawer:
@@ -14,9 +17,36 @@ export const ProfileModal = ({ isOpen, onClose, user, userName, onSaveName, init
   const [displayName, setDisplayName] = useState(userName || user?.name || 'harshcode13');
   const [email, setEmail] = useState(user?.email || 'curator@algorevis.dev');
   const [phone, setPhone] = useState(user?.phone || '+91 98765 43210');
+  const [avatarUrl, setAvatarUrl] = useState(localStorage.getItem('userAvatar') || user?.avatar || DEFAULT_AVATAR);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setIsUploadingAvatar(true);
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const res = await api.uploadImage(reader.result, 'algorevis_avatars');
+          const finalUrl = res?.url || reader.result;
+          setAvatarUrl(finalUrl);
+          localStorage.setItem('userAvatar', finalUrl);
+          window.dispatchEvent(new Event('userAvatarUpdated'));
+        } catch (err) {
+          console.warn('Avatar upload fallback to data URI:', err);
+          setAvatarUrl(reader.result);
+          localStorage.setItem('userAvatar', reader.result);
+          window.dispatchEvent(new Event('userAvatarUpdated'));
+        } finally {
+          setIsUploadingAvatar(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSave = (e) => {
     e.preventDefault();
@@ -76,12 +106,22 @@ export const ProfileModal = ({ isOpen, onClose, user, userName, onSaveName, init
           <div className="space-y-4">
             {/* User Hero */}
             <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-950/60 border border-slate-800">
-              <div className="relative">
+              <div className="relative group">
                 <img
                   alt="User Avatar"
                   className="w-16 h-16 rounded-full object-cover ring-2 ring-indigo-500"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBplqHqcerbujnVnZP6b7vfk3bmK_kq0JyqYYykpVAImoP8aWi2p0p-iSHJa9ssYKKVCZFrV7JiffqnoYp5yL_6K0lMx9Ilh-64VPvae9X1ZTtc0zhY5Tui0vNHsCbnqs2nVIt5SokPSfOdfLrGMRxdajxELaXXiE5qMqjRjnZ8NFYk4BVEWS2sUJzcrNVhZ0keMupDiD4gAw2DpOULOGimwLtjrlmvdmDtlXOavYtknPl8WeBNwqVJJcFsGgyroUy-gy0M8-SY2s6L"
+                  src={avatarUrl}
                 />
+                <label className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition text-white" title="Change photo">
+                  <span className="material-symbols-outlined text-lg">photo_camera</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    disabled={isUploadingAvatar}
+                    className="hidden"
+                  />
+                </label>
                 <span className="absolute -bottom-1 -right-1 px-1.5 py-0.2 rounded bg-amber-500 text-[10px] font-mono font-bold text-slate-950 shadow">
                   1★
                 </span>
@@ -123,6 +163,31 @@ export const ProfileModal = ({ isOpen, onClose, user, userName, onSaveName, init
           </div>
         ) : (
           <form onSubmit={handleSave} className="space-y-4">
+            {/* Avatar Photo Upload (Cloudinary CDN) */}
+            <div className="flex items-center gap-4 p-3 rounded-xl bg-slate-950 border border-slate-800">
+              <img
+                alt="Avatar Preview"
+                className="w-14 h-14 rounded-full object-cover ring-2 ring-indigo-500 shrink-0"
+                src={avatarUrl}
+              />
+              <div className="flex-1 min-w-0">
+                <label className="block text-xs font-bold text-slate-300 mb-1">
+                  Profile Photo (Cloudinary CDN)
+                </label>
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer transition shadow">
+                  <span className="material-symbols-outlined text-sm">cloud_upload</span>
+                  {isUploadingAvatar ? 'Uploading to CDN...' : 'Upload New Photo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    disabled={isUploadingAvatar}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
                 Display Name / Handle

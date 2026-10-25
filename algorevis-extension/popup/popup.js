@@ -14,7 +14,8 @@ let state = {
   activeTab: null,
   detectedData: null,
   existingProblemId: null,
-  isCodeManuallyEdited: false
+  isCodeManuallyEdited: false,
+  pastedImageBase64: ''
 };
 
 // DOM Elements
@@ -66,7 +67,15 @@ const elements = {
   codeSourceBadge: document.getElementById('codeSourceBadge'),
   solutionCode: document.getElementById('solutionCode'),
   approachSelect: document.getElementById('approachSelect'),
+  autoGenerateIntuitionBtn: document.getElementById('autoGenerateIntuitionBtn'),
+  aiIntuitionSpinner: document.getElementById('aiIntuitionSpinner'),
   problemIntuition: document.getElementById('problemIntuition'),
+  diagramPasteZone: document.getElementById('diagramPasteZone'),
+  diagramFileInput: document.getElementById('diagramFileInput'),
+  pasteZoneEmpty: document.getElementById('pasteZoneEmpty'),
+  pasteZonePreview: document.getElementById('pasteZonePreview'),
+  diagramImagePreview: document.getElementById('diagramImagePreview'),
+  removeDiagramBtn: document.getElementById('removeDiagramBtn'),
   timeComplexity: document.getElementById('timeComplexity'),
   spaceComplexity: document.getElementById('spaceComplexity'),
   personalNotes: document.getElementById('personalNotes'),
@@ -384,12 +393,101 @@ async function checkProblemExistence(url, problemId, platform) {
         if (data.problem.approach) {
           elements.approachSelect.value = data.problem.approach;
         }
+        if (data.problem.imageBase64) {
+          setImagePreview(data.problem.imageBase64);
+        }
       } else {
         resetDuplicateState();
       }
     }
   } catch (err) {
     console.warn('Check problem existence error:', err);
+  }
+}
+
+function setImagePreview(dataUrl) {
+  if (!dataUrl) return;
+  state.pastedImageBase64 = dataUrl;
+  elements.diagramImagePreview.src = dataUrl;
+  elements.pasteZoneEmpty.classList.add('hidden');
+  elements.pasteZonePreview.classList.remove('hidden');
+}
+
+function removeDiagram(e) {
+  if (e) e.stopPropagation();
+  state.pastedImageBase64 = '';
+  elements.diagramImagePreview.src = '';
+  if (elements.diagramFileInput) elements.diagramFileInput.value = '';
+  elements.pasteZonePreview.classList.add('hidden');
+  elements.pasteZoneEmpty.classList.remove('hidden');
+}
+
+function handleClipboardPaste(e) {
+  if (!e.clipboardData || !e.clipboardData.items) return;
+  const items = e.clipboardData.items;
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      const blob = items[i].getAsFile();
+      if (blob) {
+        e.preventDefault();
+        const reader = new FileReader();
+        reader.onload = (loadEvt) => {
+          setImagePreview(loadEvt.target.result);
+          showToast('success', 'Diagram/Screenshot pasted from clipboard (Ctrl+V)!');
+        };
+        reader.readAsDataURL(blob);
+        break;
+      }
+    }
+  }
+}
+
+async function handleAutoGenerateIntuition() {
+  const code = elements.solutionCode.value.trim();
+  const title = elements.problemTitle.value.trim();
+  const language = elements.codeLanguage.value;
+  const pattern = elements.approachSelect.value;
+
+  if (!code) {
+    showToast('error', 'Please capture or paste your solution code first');
+    elements.solutionCode.focus();
+    return;
+  }
+
+  elements.autoGenerateIntuitionBtn.disabled = true;
+  elements.aiIntuitionSpinner.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`${state.apiBaseUrl}/api/problems/generate-intuition`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${state.authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ code, language, title, pattern })
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data) {
+      if (data.intuition) elements.problemIntuition.value = data.intuition;
+      if (data.timeComplexity) elements.timeComplexity.value = data.timeComplexity;
+      if (data.spaceComplexity) elements.spaceComplexity.value = data.spaceComplexity;
+      if (data.pattern) {
+        const options = Array.from(elements.approachSelect.options).map(o => o.value);
+        const match = options.find(opt => opt.toLowerCase().includes(data.pattern.toLowerCase()) || data.pattern.toLowerCase().includes(opt.toLowerCase()));
+        if (match) elements.approachSelect.value = match;
+      }
+      showToast('success', '✨ Intuition, pattern & complexity deduced by AI!');
+    } else {
+      showToast('error', data.message || 'Failed to auto-generate intuition');
+    }
+  } catch (err) {
+    console.error('AI Intuition error:', err);
+    showToast('error', 'Network error contacting AI intuition service');
+  } finally {
+    elements.autoGenerateIntuitionBtn.disabled = false;
+    elements.aiIntuitionSpinner.classList.add('hidden');
   }
 }
 
@@ -446,6 +544,7 @@ async function handleSaveProblem() {
       timeComplexity: timeComplexity,
       spaceComplexity: spaceComplexity,
       notes: personalNotes,
+      imageBase64: state.pastedImageBase64 || '',
       updateIfDuplicate: true
     };
 
@@ -586,6 +685,35 @@ function setupEventListeners() {
     chrome.tabs.create({ url: 'https://algorevis-app.onrender.com' });
   });
 
+  // Global clipboard paste listener (captures Ctrl+V screenshots anywhere)
+  document.addEventListener('paste', handleClipboardPaste);
+
+  // AI intuition auto-generation
+  elements.autoGenerateIntuitionBtn?.addEventListener('click', handleAutoGenerateIntuition);
+
+  // Diagram paste zone click to open file picker
+  elements.diagramPasteZone?.addEventListener('click', (e) => {
+    if (e.target !== elements.removeDiagramBtn && !elements.removeDiagramBtn?.contains(e.target)) {
+      elements.diagramFileInput?.click();
+    }
+  });
+
+  // Diagram file picker change
+  elements.diagramFileInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (loadEvt) => {
+        setImagePreview(loadEvt.target.result);
+        showToast('success', 'Screenshot attached successfully!');
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Remove diagram button
+  elements.removeDiagramBtn?.addEventListener('click', removeDiagram);
+
   // Reset form
   elements.resetBtn.addEventListener('click', () => {
     if (confirm('Clear form fields and re-inspect current page?')) {
@@ -596,6 +724,7 @@ function setupEventListeners() {
       elements.timeComplexity.value = '';
       elements.spaceComplexity.value = '';
       elements.personalNotes.value = '';
+      removeDiagram();
       resetDuplicateState();
       inspectActiveTab();
     }

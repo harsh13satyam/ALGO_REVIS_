@@ -125,6 +125,8 @@ const validateSolutionInSandbox = (solutionCode, testCases) => {
         const parsed = JSON.parse(input);
         if (!Array.isArray(parsed)) {
           parsedArgs = [parsed];
+        } else if (sandbox.solution.length === 1 && (isListProb || isTreeProb)) {
+          parsedArgs = [parsed];
         } else if (sandbox.solution.length === 1 && parsed.length === 1 && Array.isArray(parsed[0])) {
           parsedArgs = parsed;
         } else if (sandbox.solution.length === 1 && parsed.length > 1) {
@@ -155,10 +157,12 @@ const validateSolutionInSandbox = (solutionCode, testCases) => {
         result = sandbox.solution.apply(null, parsedArgs);
       }
 
-      if (result && typeof result === 'object' && ('next' in result || ('val' in result && !('left' in result)))) {
+      if (result && typeof result === 'object' && ('next' in result || ('val' in result && !('left' in result) && !('right' in result)))) {
         result = listToArray(result);
-      } else if (result && typeof result === 'object' && ('left' in result || 'right' in result)) {
+      } else if (result && typeof result === 'object' && ('left' in result || 'right' in result || isTreeProb)) {
         result = treeToArray(result);
+      } else if (result === null && (isListProb || isTreeProb)) {
+        result = [];
       }
 
       const strResult = JSON.stringify(result);
@@ -791,7 +795,7 @@ const CATEGORIZED_PROBLEMS = {
       ],
       hiddenTestCases: [
         { input: '[1, 2, null, 3, null, 4]', expectedOutput: '4' },
-        { input: '[5, 4, 8, 11, null, 13, 4]', expectedOutput: '4' },
+        { input: '[5, 4, 8, 11, null, 13, 4]', expectedOutput: '3' },
         { input: '[10]', expectedOutput: '1' }
       ],
       referenceSolution: `function solution(root) {
@@ -1191,10 +1195,129 @@ const PATTERN_QUESTIONS_CATALOG = {
   'General': CATEGORIZED_PROBLEMS.TWO_SUM[0]
 };
 
+// Heuristic intuition extractor when AI is offline or without API key
+const heuristicIntuitionExtractor = (code = '', pattern = '') => {
+  const codeLower = code.toLowerCase();
+  let detectedPattern = pattern || 'General';
+  let intuition = 'Analyzes the constraints and processes the input iteratively to produce the expected output efficiently.';
+  let timeComplexity = 'O(n)';
+  let spaceComplexity = 'O(1)';
+  let keyObservation = 'Processes elements in a single pass to minimize overhead.';
+
+  if (codeLower.includes('left') && codeLower.includes('right') && (codeLower.includes('while') || codeLower.includes('for'))) {
+    detectedPattern = 'Two Pointers / Sliding Window';
+    intuition = 'Maintains two boundary pointers to examine subsets or scan sorted elements from both ends, avoiding quadratic recomputation.';
+    keyObservation = 'Moving the pointer based on monotonic conditions preserves optimal subproblems.';
+  } else if (codeLower.includes('stack') || codeLower.includes('push') && codeLower.includes('pop')) {
+    detectedPattern = 'Stack';
+    intuition = 'Leverages LIFO ordering to match opening/closing boundaries or maintain monotonic element order.';
+    timeComplexity = 'O(n)';
+    spaceComplexity = 'O(n)';
+    keyObservation = 'Each element is pushed and popped at most once.';
+  } else if (codeLower.includes('dp') || codeLower.includes('memo') || codeLower.includes('matrix')) {
+    detectedPattern = 'Dynamic Programming';
+    intuition = 'Breaks problem down into overlapping subproblems, caching intermediate solutions to avoid exponential recalculation.';
+    timeComplexity = 'O(n²)';
+    spaceComplexity = 'O(n)';
+    keyObservation = 'Optimal substructure allows building the global answer from previously solved states.';
+  } else if (codeLower.includes('queue') || codeLower.includes('visited') || codeLower.includes('dfs') || codeLower.includes('bfs')) {
+    detectedPattern = 'Graph / BFS / DFS';
+    intuition = 'Explores reachable nodes level by level or depth-first while tracking visited states to prevent cycles.';
+    timeComplexity = 'O(V + E)';
+    spaceComplexity = 'O(V)';
+    keyObservation = 'Tracking visited states guarantees each vertex is processed once.';
+  } else if (codeLower.includes('map') || codeLower.includes('dict') || codeLower.includes('freq') || codeLower.includes('set')) {
+    detectedPattern = 'Hash Map / Frequency Array';
+    intuition = 'Stores previously seen values in a hash table for instant O(1) average-time lookups to find complementary pairs.';
+    timeComplexity = 'O(n)';
+    spaceComplexity = 'O(n)';
+    keyObservation = 'Trades linear space to achieve linear time complexity.';
+  }
+
+  return {
+    intuition,
+    pattern: detectedPattern,
+    timeComplexity,
+    spaceComplexity,
+    keyObservation
+  };
+};
+
+/**
+ * Generates concise intuition, pattern detection, and complexity from solution code.
+ */
+const generateIntuitionFromCode = async ({ code = '', language = 'javascript', title = '', pattern = '' }) => {
+  if (!code || !code.trim()) {
+    throw new Error('Code is required to generate intuition');
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (apiKey && apiKey !== 'your_gemini_api_key_here') {
+    try {
+      const prompt = `You are a principal algorithmic instructor and FAANG technical interviewer.
+Analyze this solution code for problem "${title || 'DSA Problem'}" (Language: ${language}, Topic: ${pattern || 'General'}):
+
+\`\`\`${language}
+${code.slice(0, 3500)}
+\`\`\`
+
+Summarize the core intuition in a clear, concise format suitable for quick revision.
+Return ONLY valid parseable JSON with NO markdown code fences or backticks:
+{
+  "intuition": "2 clear sentences explaining the core 'Aha!' moment and why this approach works (the invariant, greedy choice, or transformation).",
+  "pattern": "Specific DSA Pattern (e.g. Two Pointers, Sliding Window, Monotonic Stack, Dynamic Programming, BFS, DFS, Hash Map, Binary Search, etc.)",
+  "timeComplexity": "e.g. O(n)",
+  "spaceComplexity": "e.g. O(1)",
+  "keyObservation": "1 sharp sentence on the key trick or edge case to remember."
+}`;
+
+      let res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(10000),
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
+        })
+      });
+
+      if (!res.ok) {
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(10000),
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
+          })
+        });
+      }
+
+      if (res.ok) {
+        const data = await res.json();
+        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (rawText) {
+          const parsed = JSON.parse(rawText.trim());
+          if (parsed.intuition) {
+            return parsed;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('⚠️ [AI Intuition] Gemini request error, using heuristic fallback:', err.message);
+    }
+  }
+
+  return heuristicIntuitionExtractor(code, pattern);
+};
+
 module.exports = {
   generateSimilarQuestion,
+  generateIntuitionFromCode,
   validateSolutionInSandbox,
   detectProblemCategory,
   CATEGORIZED_PROBLEMS,
   PATTERN_QUESTIONS_CATALOG
 };
+
