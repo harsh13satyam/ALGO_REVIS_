@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import api from './api';
+import UserDropdownMenu from './UserDropdownMenu';
+import MobileNavDrawer from './MobileNavDrawer';
+import {
+  ProfileModal,
+  JobProfileModal,
+  BugReportModal,
+  CertificatesModal,
+  SettingsModal
+} from './UserProfileModals';
+import ChromeExtensionModal from './ChromeExtensionModal';
 
 const DEFAULT_STARTER_CODE = {
   javascript: `// Write your algorithmic solution here
@@ -31,9 +41,21 @@ int main() {
 `
 };
 
-const DailyChallengeView = ({ navigate, params = {} }) => {
+const DailyChallengeView = ({ navigate, params = {}, user: propUser, onLogout }) => {
   const [challenge, setChallenge] = useState(null);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(propUser || null);
+  const [userName, setUserName] = useState(() => {
+    return propUser?.name || localStorage.getItem('userName') || 'harshcode13';
+  });
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isJobProfileOpen, setIsJobProfileOpen] = useState(false);
+  const [isBugReportOpen, setIsBugReportOpen] = useState(false);
+  const [isCertificatesOpen, setIsCertificatesOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isExtensionModalOpen, setIsExtensionModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [workspaceMode, setWorkspaceMode] = useState('daily'); // 'daily' or 'random'
   const [activeQuestion, setActiveQuestion] = useState('A'); // 'A' (Saved) or 'B' (AI)
@@ -611,8 +633,15 @@ const DailyChallengeView = ({ navigate, params = {} }) => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-body pb-24">
       {/* Top Navbar */}
-      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40 px-6 py-3 flex flex-wrap justify-between items-center gap-4">
-        <div className="flex items-center gap-4">
+      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40 px-4 sm:px-6 py-2.5 flex flex-wrap justify-between items-center gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsMobileNavOpen(true)}
+            className="p-1.5 text-slate-400 hover:text-white rounded-lg transition"
+            title="Open navigation menu"
+          >
+            <span className="material-symbols-outlined text-xl">menu</span>
+          </button>
           <button 
             onClick={() => navigate('dashboard_home')}
             className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
@@ -758,8 +787,88 @@ const DailyChallengeView = ({ navigate, params = {} }) => {
               {simulating ? 'Delivering...' : '⚡ Test Delivery'}
             </button>
           )}
+
+          {/* User Profile & Three-Dots Menu Trigger */}
+          <div className="relative ml-auto sm:ml-2">
+            <button
+              onClick={() => setIsUserMenuOpen(prev => !prev)}
+              className="flex items-center gap-2 p-1 sm:p-1.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-slate-700 transition cursor-pointer"
+              title="User Account Menu"
+            >
+              <div className="relative">
+                <img
+                  alt="User profile avatar"
+                  className="w-7 h-7 rounded-full object-cover ring-1 ring-indigo-500/50"
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBplqHqcerbujnVnZP6b7vfk3bmK_kq0JyqYYykpVAImoP8aWi2p0p-iSHJa9ssYKKVCZFrV7JiffqnoYp5yL_6K0lMx9Ilh-64VPvae9X1ZTtc0zhY5Tui0vNHsCbnqs2nVIt5SokPSfOdfLrGMRxdajxELaXXiE5qMqjRjnZ8NFYk4BVEWS2sUJzcrNVhZ0keMupDiD4gAw2DpOULOGimwLtjrlmvdmDtlXOavYtknPl8WeBNwqVJJcFsGgyroUy-gy0M8-SY2s6L"
+                />
+              </div>
+              <div className="hidden sm:flex items-center gap-1.5 text-left pr-1">
+                <span className="px-1.5 py-0.2 rounded bg-slate-800 text-amber-300 font-mono text-[10px] font-bold">
+                  1★
+                </span>
+                <span className="text-xs font-bold text-white max-w-[100px] truncate">
+                  {userName}
+                </span>
+              </div>
+              <span className="material-symbols-outlined text-slate-400 text-base" data-icon="more_vert">
+                more_vert
+              </span>
+            </button>
+
+            {/* Dropdown Menu matching Image 2 */}
+            <UserDropdownMenu
+              isOpen={isUserMenuOpen}
+              onClose={() => setIsUserMenuOpen(false)}
+              user={user || propUser}
+              userName={userName}
+              navigate={navigate}
+              onLogout={onLogout}
+              onOpenProfile={() => setIsProfileOpen(true)}
+              onOpenEditProfile={() => setIsEditProfileOpen(true)}
+              onOpenJobProfile={() => setIsJobProfileOpen(true)}
+              onOpenBugReport={() => setIsBugReportOpen(true)}
+              onOpenCertificates={() => setIsCertificatesOpen(true)}
+              onOpenSettings={() => setIsSettingsOpen(true)}
+            />
+          </div>
         </div>
       </header>
+
+      {/* Mobile Drawer */}
+      <MobileNavDrawer
+        isOpen={isMobileNavOpen}
+        onClose={() => setIsMobileNavOpen(false)}
+        currentView="daily_challenge"
+        navigate={navigate}
+        userName={userName}
+        user={user || propUser}
+        onLogout={onLogout}
+        onOpenExtensionModal={() => setIsExtensionModalOpen(true)}
+        onOpenProfile={() => setIsProfileOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenBugReport={() => setIsBugReportOpen(true)}
+      />
+
+      {/* Interactive Modals */}
+      <ProfileModal
+        isOpen={isProfileOpen || isEditProfileOpen}
+        onClose={() => {
+          setIsProfileOpen(false);
+          setIsEditProfileOpen(false);
+        }}
+        user={user || propUser}
+        userName={userName}
+        onSaveName={(name) => {
+          setUserName(name);
+          localStorage.setItem('userName', name);
+        }}
+        initialTab={isEditProfileOpen ? 'edit' : 'view'}
+      />
+      <JobProfileModal isOpen={isJobProfileOpen} onClose={() => setIsJobProfileOpen(false)} />
+      <BugReportModal isOpen={isBugReportOpen} onClose={() => setIsBugReportOpen(false)} />
+      <CertificatesModal isOpen={isCertificatesOpen} onClose={() => setIsCertificatesOpen(false)} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      {isExtensionModalOpen && <ChromeExtensionModal onClose={() => setIsExtensionModalOpen(false)} />}
 
       {/* Random Question Toast / Notice */}
       {randomNotice && (

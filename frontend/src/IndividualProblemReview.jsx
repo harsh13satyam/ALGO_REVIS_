@@ -1,32 +1,18 @@
 import React from 'react';
+import AppHeader from './AppHeader';
 
-const IndividualProblemReview = ({ navigate }) => {
+const IndividualProblemReview = ({ navigate, user, onLogout }) => {
   return (
     <div className="bg-surface text-on-surface font-body">
       {/* TopAppBar */}
-      <header className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 z-50 w-full">
-        <div className="flex justify-between items-center w-full px-6 py-3 max-w-screen-2xl mx-auto">
-          <div className="flex items-center gap-8">
-            <span className="text-xl font-bold tracking-tight text-indigo-700 font-headline">AlgoRevis</span>
-            <nav className="hidden md:flex gap-6">
-              <a className="text-slate-500 hover:text-slate-900 transition-colors font-medium" href="#" onClick={(e) => { e.preventDefault(); navigate('revision_dashboard'); }}>Queue</a>
-              <a className="text-slate-500 hover:text-slate-900 transition-colors font-medium" href="#" onClick={(e) => { e.preventDefault(); navigate('folders'); }}>Folders</a>
-              <a className="text-slate-500 hover:text-slate-900 transition-colors font-medium" href="#">Statistics</a>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors">
-              <span className="material-symbols-outlined">notifications</span>
-            </button>
-            <button className="p-2 text-slate-500 hover:bg-slate-50 rounded-full transition-colors">
-              <span className="material-symbols-outlined">settings</span>
-            </button>
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200">
-              <img alt="User profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCoX67Z4XOMkczHBmkA2smLxuRmw-MEsprwmnA0Xc6F08EwBPiQPr5xZ0KI8UmpeA3PZX73ww9XJeGFaLNFJmSdRBpb85S65gJE9ryrBNjOALDldXqYen0WUOZufMEQyrTtnmrEiqG0v12s98UQFGoz3g1ue1Ve347IFt-34ICFshEBafeRxN8o5fdngnscmwxZJ5UhCtSSjKzPhn2W2TwjMRHn4r7k1TN4dIVuMxcUAr4zeF0gRGzj7HrLdoXv9gdysVfayarDazIn" />
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        currentView="problem_review"
+        navigate={navigate}
+        user={user}
+        onLogout={onLogout}
+        customTitle="Problem Review"
+        isSidebarPresent={true}
+      />
 
       {/* SideNavBar (Problem Navigation Context) */}
       <aside className="hidden lg:flex flex-col fixed left-0 top-0 h-screen p-4 space-y-2 w-64 bg-slate-50 pt-20">

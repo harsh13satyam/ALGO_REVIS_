@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
 import ChromeExtensionModal from './ChromeExtensionModal';
+import AppHeader from './AppHeader';
 
-const DashboardHome = ({ navigate, user }) => {
+const DashboardHome = ({ navigate, user, onLogout }) => {
   const [userName, setUserName] = useState(() => {
-    return user?.name || localStorage.getItem('userName') || "User";
+    return user?.name || localStorage.getItem('userName') || "harshcode13";
   });
   const [problems, setProblems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,7 +39,7 @@ const DashboardHome = ({ navigate, user }) => {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [user]);
 
   const totalProblems = problems.length;
   const easyCount = problems.filter(p => p.difficulty === 'Easy').length;
@@ -83,48 +84,55 @@ const DashboardHome = ({ navigate, user }) => {
   return (
     <div className="bg-surface text-on-background min-h-screen font-body">
       {/* SideNavBar */}
-      <nav className="fixed left-0 top-0 h-screen w-64 border-r border-slate-100 dark:border-slate-900 bg-slate-50 dark:bg-slate-950 flex-col py-8 z-40 hidden md:flex text-left">
-        <div className="px-6 mb-8">
-          <h1 className="font-bold text-lg text-indigo-700 dark:text-indigo-300 font-headline">The Curator</h1>
-          <p className="text-xs font-medium text-slate-400 tracking-wider">Algorithms & Data Structures</p>
+      <nav className="fixed left-0 top-0 h-screen w-64 border-r border-slate-100 dark:border-slate-900 bg-slate-50 dark:bg-slate-950 flex-col py-6 z-40 hidden md:flex text-left overflow-y-auto">
+        <div className="px-6 mb-6">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg signature-gradient flex items-center justify-center text-white shadow-md">
+              <span className="material-symbols-outlined text-base">terminal</span>
+            </div>
+            <div>
+              <h1 className="font-bold text-base text-indigo-700 dark:text-indigo-300 font-headline leading-tight">AlgoRevis</h1>
+              <p className="text-[10px] font-medium text-slate-400 tracking-wider">The Curator</p>
+            </div>
+          </div>
         </div>
         <div className="flex-1 flex flex-col gap-1">
           {/* Dashboard (Active) */}
-          <a className="text-indigo-700 dark:text-indigo-300 font-bold border-r-4 border-indigo-600 flex items-center gap-3 px-6 py-3 bg-indigo-50/30" href="#" onClick={(e) => { e.preventDefault(); navigate('dashboard_home'); }}>
+          <a className="text-indigo-700 dark:text-indigo-300 font-bold border-r-4 border-indigo-600 flex items-center gap-3 px-6 py-2.5 bg-indigo-50/30" href="#" onClick={(e) => { e.preventDefault(); navigate('dashboard_home'); }}>
             <span className="material-symbols-outlined" data-icon="grid_view">grid_view</span>
             <span className="font-body text-sm">Dashboard</span>
           </a>
-          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('folders'); }}>
+          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-2.5 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('folders'); }}>
             <span className="material-symbols-outlined" data-icon="folder_open">folder_open</span>
             <span className="font-body text-sm">My Folders</span>
           </a>
-          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#">
-            <span className="material-symbols-outlined" data-icon="create_new_folder">create_new_folder</span>
-            <span className="font-body text-sm">Add New Folder</span>
-          </a>
-          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('daily_challenge', { mode: 'random' }); }}>
+          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-2.5 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('daily_challenge', { mode: 'random' }); }}>
             <span className="material-symbols-outlined" data-icon="shuffle">shuffle</span>
             <span className="font-body text-sm font-semibold">Random Practice</span>
           </a>
-          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('daily_challenge', { mode: 'daily' }); }}>
+          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-2.5 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('daily_challenge', { mode: 'daily' }); }}>
             <span className="material-symbols-outlined" data-icon="bolt">bolt</span>
             <span className="font-body text-sm font-semibold">Daily Challenge</span>
           </a>
-          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('revision_dashboard'); }}>
+          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-2.5 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('sheets'); }}>
+            <span className="material-symbols-outlined" data-icon="dataset">dataset</span>
+            <span className="font-body text-sm font-semibold">DSA Sheets</span>
+          </a>
+          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-2.5 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('mock_tests'); }}>
+            <span className="material-symbols-outlined" data-icon="timer">timer</span>
+            <span className="font-body text-sm font-semibold">Mock Tests</span>
+          </a>
+          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-2.5 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); navigate('revision_dashboard'); }}>
             <span className="material-symbols-outlined" data-icon="History_edu">history_edu</span>
             <span className="font-body text-sm font-semibold">Revision Mode</span>
           </a>
-          <a className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); setShowExtensionModal(true); }}>
+          <a className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-3 px-6 py-2.5 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 transition-all duration-300" href="#" onClick={(e) => { e.preventDefault(); setShowExtensionModal(true); }}>
             <span className="text-amber-500 font-bold">⚡</span>
             <span className="font-body text-sm">Chrome Extension</span>
           </a>
-          <a className="text-slate-500 dark:text-slate-400 flex items-center gap-3 px-6 py-3 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 transition-all duration-300 mt-auto" href="#">
-            <span className="material-symbols-outlined" data-icon="settings">settings</span>
-            <span className="font-body text-sm">Settings</span>
-          </a>
         </div>
-        <div className="px-6 mt-6">
-          <button className="w-full signature-gradient text-white py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all" onClick={() => navigate('add_problem')}>
+        <div className="px-6 mt-4">
+          <button className="w-full signature-gradient text-white py-2.5 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all cursor-pointer" onClick={() => navigate('add_problem')}>
             <span className="material-symbols-outlined text-sm" data-icon="add">add</span>
             New Problem
           </button>
@@ -133,39 +141,14 @@ const DashboardHome = ({ navigate, user }) => {
 
       {/* Content Area */}
       <main className="md:ml-64 min-h-screen flex flex-col text-left">
-        {/* TopAppBar */}
-        <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex justify-between items-center px-6 py-3 w-full border-b border-slate-100 dark:border-slate-800 sticky top-0 z-50 shadow-sm dark:shadow-none">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="relative w-full max-w-md">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" data-icon="search">search</span>
-              <input className="w-full bg-slate-100 dark:bg-slate-800 border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:bg-white transition-all" placeholder="Search problems, folders, or concepts..." type="text" />
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowExtensionModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-bold transition shadow-sm cursor-pointer"
-              title="Download & setup Chrome Extension for LeetCode & GFG"
-            >
-              <span className="text-amber-500">⚡</span>
-              <span>Chrome Extension</span>
-            </button>
-            <button className="p-2 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
-              <span className="material-symbols-outlined" data-icon="notifications">notifications</span>
-            </button>
-            <button className="p-2 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-colors">
-              <span className="material-symbols-outlined" data-icon="help_outline">help_outline</span>
-            </button>
-            <div className="h-8 w-[1px] bg-slate-100 dark:bg-slate-800 mx-2"></div>
-            <div className="flex items-center gap-3 pl-2">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-slate-900 dark:text-slate-50 leading-tight">{userName}</p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Member</p>
-              </div>
-              <img alt="User profile avatar" className="w-9 h-9 rounded-full object-cover ring-2 ring-indigo-50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBplqHqcerbujnVnZP6b7vfk3bmK_kq0JyqYYykpVAImoP8aWi2p0p-iSHJa9ssYKKVCZFrV7JiffqnoYp5yL_6K0lMx9Ilh-64VPvae9X1ZTtc0zhY5Tui0vNHsCbnqs2nVIt5SokPSfOdfLrGMRxdajxELaXXiE5qMqjRjnZ8NFYk4BVEWS2sUJzcrNVhZ0keMupDiD4gAw2DpOULOGimwLtjrlmvdmDtlXOavYtknPl8WeBNwqVJJcFsGgyroUy-gy0M8-SY2s6L" />
-            </div>
-          </div>
-        </header>
+        {/* Unified Top Navigation Bar */}
+        <AppHeader
+          currentView="dashboard_home"
+          navigate={navigate}
+          user={user}
+          onLogout={onLogout}
+          isSidebarPresent={true}
+        />
 
         {/* Dashboard Canvas */}
         <div className="p-8 space-y-12 max-w-7xl mx-auto w-full">

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
 import ChromeExtensionModal from './ChromeExtensionModal';
+import AppHeader from './AppHeader';
 
-const MyFolders = ({ navigate, user }) => {
+const MyFolders = ({ navigate, user, onLogout }) => {
   const [problems, setProblems] = useState([]);
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [zoomedImage, setZoomedImage] = useState(null);
@@ -181,33 +182,14 @@ const MyFolders = ({ navigate, user }) => {
       {/* Main Content Area */}
       <main className="md:ml-64 min-h-screen flex flex-col">
         {/* TopAppBar */}
-        <header className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none flex justify-between items-center px-6 py-3 w-full">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="md:hidden">
-              <span className="material-symbols-outlined text-slate-900" data-icon="menu">menu</span>
-            </div>
-            <div className="relative w-full max-w-md">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm" data-icon="search">search</span>
-              <input className="w-full bg-surface-container-high border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500/20 transition-all" placeholder="Search folders..." type="text" />
-            </div>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="hidden sm:flex items-center gap-1">
-              <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-50 font-headline">AlgoRevis</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <button className="text-slate-500 hover:text-indigo-600 transition-colors">
-                <span className="material-symbols-outlined" data-icon="notifications">notifications</span>
-              </button>
-              <button className="text-slate-500 hover:text-indigo-600 transition-colors">
-                <span className="material-symbols-outlined" data-icon="help_outline">help_outline</span>
-              </button>
-              <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-slate-100">
-                <img alt="User profile avatar" className="w-full h-full object-cover" data-alt="User avatar with a professional tech illustration" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA96PC9CCiedcCZOqsHyLS59GqcLKNgkLOiD1mxPMSCjKKTPJC1jltV2r10RGD9XeyjEtD2P0Vn2vOaYLfQfLfPAaH0Q0mOCGgrBk1SMmL1uUwweAOu2vUwW2EYGBovkRtVA1GmByQnhGSem-RF_9929l_JZMB0O-TMCqwr9TPQyObmQ9VJkxIpgB-HeLSkWXZHYDHLoxv5kxgsv09jiuU4FQgSsdg-exiLyE47gBzyXaAVqXH88UPgRzFjMcPB-bgw11He-Tdw8rI6" />
-              </div>
-            </div>
-          </div>
-        </header>
+        <AppHeader
+          currentView="folders"
+          navigate={navigate}
+          user={user}
+          onLogout={onLogout}
+          isSidebarPresent={true}
+          customTitle="My Folders"
+        />
 
         {/* Page Canvas */}
         <div className="p-8 max-w-7xl w-full mx-auto">

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
+import AppHeader from './AppHeader';
 
 const MOCK_ASSESSMENTS = [
   {
@@ -152,7 +153,7 @@ const MOCK_ASSESSMENTS = [
   }
 ];
 
-const MockTestsView = ({ navigate, user }) => {
+const MockTestsView = ({ navigate, user, onLogout }) => {
   const [selectedMock, setSelectedMock] = useState(null);
   const [activeProblemIdx, setActiveProblemIdx] = useState(0);
   const [timerSeconds, setTimerSeconds] = useState(null);
@@ -213,8 +214,17 @@ const MockTestsView = ({ navigate, user }) => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-body pb-20 text-left">
       {/* Top Header */}
-      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40 px-6 py-3 flex flex-wrap justify-between items-center gap-4">
-        <div className="flex items-center gap-6">
+      <AppHeader
+        currentView="mock_tests"
+        navigate={navigate}
+        user={user}
+        onLogout={onLogout}
+        customTitle="DSA Mock Assessments"
+      />
+
+      {/* Sub Navigation Bar for Test Actions & Timer */}
+      <div className="border-b border-slate-800 bg-slate-900/60 px-6 py-2.5 flex flex-wrap justify-between items-center gap-3">
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => {
               if (selectedMock) setSelectedMock(null);
@@ -225,12 +235,14 @@ const MockTestsView = ({ navigate, user }) => {
             {selectedMock ? '← Exit Mock Test' : '← Revision Mode'}
           </button>
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-purple-400">timer</span>
-            <span className="font-headline font-bold text-lg text-white">DSA Mock Assessments</span>
+            <span className="material-symbols-outlined text-purple-400 text-base">timer</span>
+            <span className="font-headline font-bold text-sm text-white">
+              {selectedMock ? selectedMock.title : 'Assessment Suite'}
+            </span>
           </div>
         </div>
 
-        <nav className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
           {timerActive && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-950/80 border border-rose-800 rounded-lg text-rose-300 font-mono text-xs font-bold mr-2">
               <span className="material-symbols-outlined text-sm animate-pulse">hourglass_bottom</span>
@@ -256,8 +268,8 @@ const MockTestsView = ({ navigate, user }) => {
           >
             🎲 Practice Workspace
           </button>
-        </nav>
-      </header>
+        </div>
+      </div>
 
       {/* Main Container */}
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">

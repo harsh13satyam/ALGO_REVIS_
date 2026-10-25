@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-
 import api from './api';
+import AppHeader from './AppHeader';
 
-const AddNewProblemForm = ({ navigate, user }) => {
+const AddNewProblemForm = ({ navigate, user, onLogout }) => {
   const [name, setName] = useState('');
   const [link, setLink] = useState('');
   const [pattern, setPattern] = useState('');
@@ -66,35 +66,17 @@ const AddNewProblemForm = ({ navigate, user }) => {
   return (
     <div className="bg-surface font-body text-on-surface selection:bg-primary-fixed">
       {/* TopAppBar */}
-      <header className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl shadow-sm flex items-center justify-between px-6 py-3">
-        <div className="flex items-center gap-8">
-          <span className="text-2xl font-bold tracking-tight text-indigo-700 font-headline">AlgoRevis</span>
-          <nav className="hidden md:flex gap-6 items-center">
-            <a className="text-slate-500 hover:text-indigo-500 transition-colors" href="#" onClick={(e) => { e.preventDefault(); navigate('dashboard_home'); }}>Dashboard</a>
-            <a className="text-indigo-700 font-semibold border-b-2 border-indigo-600 pb-1" href="#" onClick={(e) => { e.preventDefault(); navigate('folders'); }}>Problems</a>
-            <a className="text-slate-500 hover:text-indigo-500 transition-colors" href="#">Library</a>
-            <a className="text-slate-500 hover:text-indigo-500 transition-colors" href="#">Community</a>
-          </nav>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="relative hidden sm:block">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
-            <input className="bg-surface-container-high border-none rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search problems..." type="text" />
-          </div>
-          <button className="p-2 hover:bg-slate-100 rounded-lg transition-all">
-            <span className="material-symbols-outlined text-on-surface-variant">notifications</span>
-          </button>
-          <button className="p-2 hover:bg-slate-100 rounded-lg transition-all">
-            <span className="material-symbols-outlined text-on-surface-variant">settings</span>
-          </button>
-          <div className="h-8 w-8 rounded-full bg-primary-fixed overflow-hidden">
-            <img alt="User profile avatar" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDz3AtA3OU_3g_eiTAVwAB6q4EEoN3wi0Iu9HZbmetvo2fIJIQ5osuxvrU79mZcmiY8qVK-uqhdG6T7C-CRN4ey7_AmDFhvKEVLZDb7hJlOTBOPtCf_a10jB8acEwkjZI1Nl8QqPX68GsVl_M73trtPP1HrbIMADJd1Gxy5HSILS4lS_YLyLGaAZJbh0bgvIs7hyuCe9iIYd3pj_G2XhjU60AGLu3TVt8Qk4XPzI5cDa9fQYFVcazcKjZaY9Qf50eq7scQkoNG87zKN" />
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        currentView="add_problem"
+        navigate={navigate}
+        user={user}
+        onLogout={onLogout}
+        customTitle="Add Problem"
+        isSidebarPresent={true}
+      />
       
       {/* Sidebar */}
-      <aside className="h-screen w-64 fixed left-0 top-0 z-40 bg-slate-50 flex flex-col py-8 pr-4 pt-20">
+      <aside className="h-screen w-64 fixed left-0 top-0 z-30 bg-slate-50 hidden md:flex flex-col py-8 pr-4 pt-20">
         <div className="px-6 mb-8">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center text-white">
@@ -115,33 +97,19 @@ const AddNewProblemForm = ({ navigate, user }) => {
             <span className="material-symbols-outlined">folder_open</span>
             <span className="font-headline font-medium">My Folders</span>
           </a>
-          <a className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:translate-x-1 transition-transform hover:bg-indigo-50 rounded-r-full" href="#">
-            <span className="material-symbols-outlined">map</span>
-            <span className="font-headline font-medium">Roadmaps</span>
+          <a className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:translate-x-1 transition-transform hover:bg-indigo-50 rounded-r-full" href="#" onClick={(e) => { e.preventDefault(); navigate('sheets'); }}>
+            <span className="material-symbols-outlined">dataset</span>
+            <span className="font-headline font-medium">DSA Sheets</span>
           </a>
-          <a className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:translate-x-1 transition-transform hover:bg-indigo-50 rounded-r-full" href="#">
-            <span className="material-symbols-outlined">account_tree</span>
-            <span className="font-headline font-medium">Data Structures</span>
-          </a>
-          <a className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:translate-x-1 transition-transform hover:bg-indigo-50 rounded-r-full" href="#">
-            <span className="material-symbols-outlined">terminal</span>
-            <span className="font-headline font-medium">Algorithms</span>
+          <a className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:translate-x-1 transition-transform hover:bg-indigo-50 rounded-r-full" href="#" onClick={(e) => { e.preventDefault(); navigate('mock_tests'); }}>
+            <span className="material-symbols-outlined">timer</span>
+            <span className="font-headline font-medium">Mock Tests</span>
           </a>
         </nav>
-        <div className="px-4 mt-auto">
-          <a className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:translate-x-1 transition-transform" href="#">
-            <span className="material-symbols-outlined">help</span>
-            <span className="font-headline font-medium">Support</span>
-          </a>
-          <a className="flex items-center gap-3 px-4 py-3 text-slate-500 hover:translate-x-1 transition-transform" href="#">
-            <span className="material-symbols-outlined">logout</span>
-            <span className="font-headline font-medium">Logout</span>
-          </a>
-        </div>
       </aside>
 
       {/* Main Content (Folders Background) */}
-      <main className="ml-64 pt-20 p-8 min-h-screen">
+      <main className="md:ml-64 p-4 sm:p-8 min-h-screen">
         <div className="max-w-6xl mx-auto opacity-40 select-none pointer-events-none">
           <div className="flex items-center justify-between mb-8">
             <div>

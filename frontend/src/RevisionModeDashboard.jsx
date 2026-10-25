@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from './api';
+import AppHeader from './AppHeader';
 
-const RevisionModeDashboard = ({ navigate }) => {
+const RevisionModeDashboard = ({ navigate, user, onLogout }) => {
   const [problems, setProblems] = useState([]);
   const [dailyChallenge, setDailyChallenge] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -113,59 +114,17 @@ const RevisionModeDashboard = ({ navigate }) => {
   return (
     <div className="bg-surface font-body text-on-surface">
       {/* TopAppBar */}
-      <header className="fixed top-0 w-full z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-sm dark:shadow-none border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center justify-between px-6 py-3 w-full">
-          <div className="flex items-center gap-8">
-            <span 
-              onClick={() => navigate('dashboard_home')}
-              className="text-xl font-bold tracking-tighter text-slate-900 dark:text-white font-headline cursor-pointer"
-            >
-              AlgoRevis
-            </span>
-            <nav className="hidden md:flex items-center gap-6 font-headline font-semibold tracking-tight">
-              <a 
-                className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 px-3 py-1 rounded-lg cursor-pointer" 
-                onClick={(e) => { e.preventDefault(); navigate('folders'); }}
-                href="#"
-              >
-                Problems
-              </a>
-              <a 
-                className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 px-3 py-1 rounded-lg cursor-pointer" 
-                onClick={(e) => { e.preventDefault(); navigate('sheets'); }}
-                href="#"
-              >
-                Sheets
-              </a>
-              <a 
-                className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 px-3 py-1 rounded-lg cursor-pointer" 
-                onClick={(e) => { e.preventDefault(); navigate('mock_tests'); }}
-                href="#"
-              >
-                Mock Tests
-              </a>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate('add_problem')}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold shadow transition"
-            >
-              <span className="material-symbols-outlined text-sm">add</span>
-              <span>Add Problem</span>
-            </button>
-            <button 
-              onClick={() => navigate('daily_challenge', { mode: 'today' })}
-              className="signature-gradient text-white px-5 py-2 rounded-xl font-headline font-semibold text-sm active:scale-95 transition-transform"
-            >
-              Start Session
-            </button>
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        currentView="revision_dashboard"
+        navigate={navigate}
+        user={user}
+        onLogout={onLogout}
+        isSidebarPresent={true}
+        customTitle="Revision Mode"
+      />
 
       {/* SideNavBar */}
-      <aside className="h-screen w-64 fixed left-0 top-0 z-40 bg-slate-50 dark:bg-slate-950 flex flex-col p-4 space-y-2 border-r border-slate-100 dark:border-slate-800">
+      <aside className="h-screen w-64 fixed left-0 top-0 z-30 bg-slate-50 dark:bg-slate-950 hidden md:flex flex-col p-4 space-y-2 border-r border-slate-100 dark:border-slate-800">
         <div className="mb-8 pt-16 px-2">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-8 h-8 signature-gradient rounded-lg flex items-center justify-center">
@@ -243,7 +202,7 @@ const RevisionModeDashboard = ({ navigate }) => {
       </aside>
 
       {/* Main Content Area */}
-      <main className="pl-64 pt-20 min-h-screen bg-surface text-left">
+      <main className="md:pl-64 min-h-screen bg-surface text-left">
         <div className="max-w-7xl mx-auto px-8 py-8">
           {/* Hero Revision Status */}
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">

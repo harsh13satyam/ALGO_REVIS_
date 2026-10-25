@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from './api';
+import AppHeader from './AppHeader';
 
 const STRIVER_A2Z_PROBLEMS = [
   // Step 1 & 2: Basics & Sorting
@@ -106,7 +107,7 @@ const FRAZ_SDE_PROBLEMS = [
   { title: 'Edit Distance', pattern: 'Dynamic Programming', difficulty: 'Hard', link: 'https://leetcode.com/problems/edit-distance/', category: 'Dynamic Programming' }
 ];
 
-const DsaSheetsView = ({ navigate, user }) => {
+const DsaSheetsView = ({ navigate, user, onLogout }) => {
   const [activeSheet, setActiveSheet] = useState('striver'); // 'striver', 'cses', 'fraz'
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('all');
@@ -156,27 +157,30 @@ const DsaSheetsView = ({ navigate, user }) => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-body pb-20 text-left">
       {/* Top Header */}
-      <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-40 px-6 py-3 flex flex-wrap justify-between items-center gap-4">
-        <div className="flex items-center gap-6">
+      <AppHeader
+        currentView="sheets"
+        navigate={navigate}
+        user={user}
+        onLogout={onLogout}
+        customTitle="DSA Curated Sheets"
+      />
+
+      {/* Sub Navigation Bar */}
+      <div className="border-b border-slate-800 bg-slate-900/60 px-6 py-2.5 flex flex-wrap justify-between items-center gap-3">
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate('revision_dashboard')}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1"
           >
             ← Revision Mode
           </button>
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-indigo-400">dataset</span>
-            <span className="font-headline font-bold text-lg text-white">DSA Curated Sheets</span>
+            <span className="material-symbols-outlined text-indigo-400 text-base">dataset</span>
+            <span className="font-headline font-bold text-sm text-white">Curated Sheets Library</span>
           </div>
         </div>
 
         <nav className="flex items-center gap-2">
-          <button 
-            onClick={() => navigate('dashboard_home')}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition"
-          >
-            Dashboard
-          </button>
           <button 
             onClick={() => navigate('mock_tests')}
             className="text-xs font-semibold px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition"
@@ -190,7 +194,7 @@ const DsaSheetsView = ({ navigate, user }) => {
             🎲 Practice Workspace
           </button>
         </nav>
-      </header>
+      </div>
 
       {/* Main Container */}
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">

@@ -103,19 +103,6 @@ function App() {
 
   return (
     <>
-      {isLoggedIn && (
-        <div className="fixed bottom-0 right-0 z-[100] m-4 flex gap-2 flex-wrap justify-end">
-          <button onClick={() => handleNavigate('daily_challenge', { mode: 'random' })} className="px-3 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded text-xs font-bold shadow hover:from-indigo-700 hover:to-purple-700 transition">🎲 Random Practice</button>
-          <button onClick={() => handleNavigate('sheets')} className="px-3 py-1 bg-purple-700 text-white rounded text-xs font-bold shadow hover:bg-purple-800 transition">📚 Sheets</button>
-          <button onClick={() => handleNavigate('mock_tests')} className="px-3 py-1 bg-pink-700 text-white rounded text-xs font-bold shadow hover:bg-pink-800 transition">⏱️ Mock Tests</button>
-          <button onClick={() => handleNavigate('folders')} className="px-3 py-1 bg-slate-800 text-white rounded text-xs shadow hover:bg-slate-900 transition">Folders</button>
-          <button onClick={() => handleNavigate('add_problem')} className="px-3 py-1 bg-rose-600 text-white rounded text-xs shadow hover:bg-rose-700 transition">Add Problem</button>
-          <button onClick={() => handleNavigate('revision_dashboard')} className="px-3 py-1 bg-emerald-600 text-white rounded text-xs shadow hover:bg-emerald-700 transition">Revision Dash</button>
-          <button onClick={() => handleNavigate('dashboard_home')} className="px-3 py-1 bg-cyan-600 text-white rounded text-xs shadow hover:bg-cyan-700 transition">Dash Home</button>
-          <button onClick={handleLogout} className="px-3 py-1 bg-red-700 text-white rounded text-xs shadow hover:bg-red-800 transition">Logout</button>
-        </div>
-      )}
-
       {!isLoggedIn ? (
         currentView === 'signup' ? (
           <Signup navigate={handleNavigate} onLoginSuccess={handleLoginSuccess} />
@@ -126,15 +113,15 @@ function App() {
         )
       ) : (
         <>
-          {currentView === 'daily_challenge' && <DailyChallengeView navigate={handleNavigate} user={currentUser} params={viewParams} />}
-          {currentView === 'folders' && <MyFolders navigate={handleNavigate} user={currentUser} />}
-          {currentView === 'add_problem' && <AddNewProblemForm navigate={handleNavigate} user={currentUser} />}
-          {currentView === 'revision_dashboard' && <RevisionModeDashboard navigate={handleNavigate} user={currentUser} />}
-          {currentView === 'problem_review' && <IndividualProblemReview navigate={handleNavigate} user={currentUser} />}
-          {currentView === 'sheets' && <DsaSheetsView navigate={handleNavigate} user={currentUser} />}
-          {currentView === 'mock_tests' && <MockTestsView navigate={handleNavigate} user={currentUser} />}
+          {currentView === 'daily_challenge' && <DailyChallengeView navigate={handleNavigate} user={currentUser} params={viewParams} onLogout={handleLogout} />}
+          {currentView === 'folders' && <MyFolders navigate={handleNavigate} user={currentUser} onLogout={handleLogout} />}
+          {currentView === 'add_problem' && <AddNewProblemForm navigate={handleNavigate} user={currentUser} onLogout={handleLogout} />}
+          {currentView === 'revision_dashboard' && <RevisionModeDashboard navigate={handleNavigate} user={currentUser} onLogout={handleLogout} />}
+          {currentView === 'problem_review' && <IndividualProblemReview navigate={handleNavigate} user={currentUser} onLogout={handleLogout} />}
+          {currentView === 'sheets' && <DsaSheetsView navigate={handleNavigate} user={currentUser} onLogout={handleLogout} />}
+          {currentView === 'mock_tests' && <MockTestsView navigate={handleNavigate} user={currentUser} onLogout={handleLogout} />}
           {(currentView === 'dashboard_home' || !['daily_challenge', 'folders', 'add_problem', 'revision_dashboard', 'problem_review', 'sheets', 'mock_tests'].includes(currentView)) && (
-            <DashboardHome navigate={handleNavigate} user={currentUser} />
+            <DashboardHome navigate={handleNavigate} user={currentUser} onLogout={handleLogout} />
           )}
         </>
       )}
