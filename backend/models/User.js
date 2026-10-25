@@ -71,13 +71,21 @@ const UserSchema = new mongoose.Schema({
   deliveryPreferences: {
     time: {
       type: String,
-      default: '09:00' // HH:mm 24-hr format
+      default: '09:00' // HH:mm 24-hr format (Morning release)
+    },
+    reminderTime: {
+      type: String,
+      default: '19:00' // HH:mm 24-hr format (Evening streak reminder)
     },
     timezone: {
       type: String,
       default: 'UTC' // IANA timezone format e.g. 'Asia/Kolkata'
     },
     emailEnabled: {
+      type: Boolean,
+      default: true
+    },
+    reminderEmailEnabled: {
       type: Boolean,
       default: true
     },

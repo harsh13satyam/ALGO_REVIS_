@@ -2,7 +2,7 @@ const User = require('../models/User');
 const DailyChallenge = require('../models/DailyChallenge');
 const { selectRevisionProblem } = require('./revisionService');
 const { generateSimilarQuestion } = require('./aiService');
-const { sendDailyChallengeEmail } = require('./emailService');
+const { sendDailyChallengeEmail, sendStreakReminderEmail } = require('./emailService');
 const { sendDailyChallengeWhatsApp } = require('./whatsappService');
 
 /**
@@ -93,6 +93,7 @@ const getOrCreateDailyChallenge = async (user, scheduledDate = null) => {
       },
       deliveryStatus: {
         email: { status: user.deliveryPreferences?.emailEnabled ? 'pending' : 'disabled' },
+        reminderEmail: { status: user.deliveryPreferences?.reminderEmailEnabled !== false ? 'pending' : 'disabled' },
         whatsapp: { status: user.deliveryPreferences?.whatsappEnabled ? 'pending' : 'disabled' }
       }
     });
@@ -111,10 +112,32 @@ const getOrCreateDailyChallenge = async (user, scheduledDate = null) => {
 /**
  * Dispatches challenge to user via Email and WhatsApp independently
  */
-const deliverChallenge = async (user, challenge) => {
-  const results = { email: null, whatsapp: null };
+const deliverChallenge = async (user, challenge, options = {}) => {
+  const results = { email: null, reminderEmail: null, whatsapp: null };
 
-  // 1. Email delivery
+  // 1. Evening streak reminder dispatch (2nd email of the day)
+  if (options.reminder) {
+    if (user.deliveryPreferences?.emailEnabled && user.deliveryPreferences?.reminderEmailEnabled !== false) {
+      try {
+        const remRes = await sendStreakReminderEmail(user, challenge);
+        challenge.deliveryStatus.reminderEmail = {
+          status: remRes.status || (remRes.skipped ? 'skipped' : 'failed'),
+          sentAt: remRes.success ? new Date() : null,
+          messageId: remRes.messageId || null,
+          error: remRes.error || null
+        };
+        results.reminderEmail = remRes;
+      } catch (e) {
+        console.error('Streak reminder dispatcher error:', e);
+        challenge.deliveryStatus.reminderEmail = { status: 'failed', error: e.message };
+        results.reminderEmail = { success: false, error: e.message };
+      }
+    }
+    await challenge.save();
+    return results;
+  }
+
+  // 2. Primary Morning Challenge Email delivery
   if (user.deliveryPreferences?.emailEnabled && challenge.deliveryStatus?.email?.status !== 'sent') {
     try {
       const emailRes = await sendDailyChallengeEmail(user, challenge);
@@ -132,7 +155,7 @@ const deliverChallenge = async (user, challenge) => {
     }
   }
 
-  // 2. WhatsApp delivery (completely isolated from email)
+  // 3. WhatsApp delivery (completely isolated from email)
   if (user.deliveryPreferences?.whatsappEnabled && challenge.deliveryStatus?.whatsapp?.status !== 'sent') {
     try {
       const waRes = await sendDailyChallengeWhatsApp(user, challenge);
@@ -155,26 +178,27 @@ const deliverChallenge = async (user, challenge) => {
 };
 
 /**
- * Scheduled check: evaluates users whose preferred delivery time has arrived
+ * Scheduled check: evaluates users whose preferred delivery times have arrived (2 emails/day)
  */
 const runSchedulerTick = async () => {
   try {
     const users = await User.find({
       $or: [
         { 'deliveryPreferences.emailEnabled': true },
+        { 'deliveryPreferences.reminderEmailEnabled': true },
         { 'deliveryPreferences.whatsappEnabled': true }
       ]
     });
 
     for (const user of users) {
       const tz = user.deliveryPreferences?.timezone || 'UTC';
-      const targetTime = user.deliveryPreferences?.time || '09:00';
+      const morningTime = user.deliveryPreferences?.time || '09:00';
+      const reminderTime = user.deliveryPreferences?.reminderTime || '19:00';
       const currentTime = getLocalTimeString(tz);
       const currentDate = getLocalDateString(tz);
 
-      // Trigger if current time has reached target time
-      if (currentTime >= targetTime) {
-        // Atomic check: is today's challenge already generated and delivered?
+      // --- EMAIL 1: Morning Daily Release (at or after morningTime) ---
+      if (currentTime >= morningTime) {
         const existing = await DailyChallenge.findOne({ user: user._id, scheduledDate: currentDate });
         
         const needsEmail = user.deliveryPreferences?.emailEnabled && 
@@ -183,9 +207,33 @@ const runSchedulerTick = async () => {
           (!existing || ['pending', 'failed'].includes(existing.deliveryStatus?.whatsapp?.status));
 
         if (!existing || needsEmail || needsWhatsApp) {
-          console.log(`⏰ [Scheduler] Triggering daily delivery for ${user.email} (${currentDate} ${tz})`);
+          console.log(`⏰ [Scheduler] Triggering morning delivery for ${user.email} (${currentDate} ${tz})`);
           const challenge = await getOrCreateDailyChallenge(user, currentDate);
           await deliverChallenge(user, challenge);
+        }
+      }
+
+      // --- EMAIL 2: Evening Streak Reminder (at or after reminderTime) ---
+      if (currentTime >= reminderTime && user.deliveryPreferences?.emailEnabled && user.deliveryPreferences?.reminderEmailEnabled !== false) {
+        const existing = await DailyChallenge.findOne({ user: user._id, scheduledDate: currentDate });
+        if (existing) {
+          const isCompleted = existing.questionA?.completed && existing.questionB?.completed;
+          if (isCompleted) {
+            // If already completed, ensure it is recorded as skipped so we don't nag
+            if (existing.deliveryStatus?.reminderEmail?.status !== 'skipped' && existing.deliveryStatus?.reminderEmail?.status !== 'sent') {
+              existing.deliveryStatus.reminderEmail = { status: 'skipped', error: 'Daily challenge already completed by user' };
+              await existing.save();
+            }
+          } else {
+            // Still pending! Send evening reminder if not yet sent
+            const needsReminder = !existing.deliveryStatus?.reminderEmail || 
+              ['pending', 'failed'].includes(existing.deliveryStatus?.reminderEmail?.status);
+
+            if (needsReminder) {
+              console.log(`⏰ [Scheduler] Triggering evening streak reminder for ${user.email} (${currentDate} ${tz})`);
+              await deliverChallenge(user, existing, { reminder: true });
+            }
+          }
         }
       }
     }
@@ -197,12 +245,12 @@ const runSchedulerTick = async () => {
 /**
  * Dev simulation trigger: immediately generates and dispatches challenge for user
  */
-const simulateDailyDelivery = async (user) => {
+const simulateDailyDelivery = async (user, options = {}) => {
   const tz = user.deliveryPreferences?.timezone || 'UTC';
   const currentDate = getLocalDateString(tz);
 
   const challenge = await getOrCreateDailyChallenge(user, currentDate);
-  const deliveryResults = await deliverChallenge(user, challenge);
+  const deliveryResults = await deliverChallenge(user, challenge, options);
 
   return {
     challenge,

@@ -187,6 +187,16 @@ const DailyChallengeSchema = new mongoose.Schema({
       messageId: String,
       error: String
     },
+    reminderEmail: {
+      status: {
+        type: String,
+        enum: ['disabled', 'pending', 'sent', 'delivered', 'failed', 'mock_sent', 'skipped'],
+        default: 'pending'
+      },
+      sentAt: Date,
+      messageId: String,
+      error: String
+    },
     whatsapp: {
       status: {
         type: String,

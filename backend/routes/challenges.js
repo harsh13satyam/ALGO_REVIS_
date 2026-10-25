@@ -537,7 +537,7 @@ router.post('/reveal-solution', async (req, res) => {
 // POST /api/challenges/simulate - Dev trigger for instant generation & delivery
 router.post('/simulate', async (req, res) => {
   try {
-    const simulationResult = await simulateDailyDelivery(req.user);
+    const simulationResult = await simulateDailyDelivery(req.user, req.body || {});
     res.status(200).json({
       message: 'Daily challenge generated and delivered successfully',
       ...simulationResult
